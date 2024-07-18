@@ -52,7 +52,7 @@
 	(push entry entries)))
     entries))
 
-(defvar *bd-jira-config/netrc* "/Users/anparisi/.netrc")
+(defvar *bd-jira-config/netrc* "")
 
 (defvar *bd-jira-config/config* '())
 
