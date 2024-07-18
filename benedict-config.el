@@ -20,7 +20,7 @@
 (require 'bd-jira-config)
 (require 'bd-jira-user)
 
-(defun benedict/init! ()
+(defun benedict-config/init! ()
   "Initialize all of benedict's configuration."
   (unless *bd-jira-config/config*
     (bd-jira-config/init)

@@ -25,10 +25,16 @@
 ;;; Code:
 (require 'benedict-config)
 
+;;;###autoload
+(defun benedict/init! ()
+  "Initialize benedicts configuration."
+  (benedict-config/init!))
+
 ;;;;;;;
 ;; JIRA
 (require 'bd-jira-issue)
 
+;;;###autoload
 (defun benedict/list-issues ()
   "Display all active Engine issues in another buffer."
   (interactive)
@@ -36,17 +42,20 @@
   (benedict-jira-issue/list
    "project = XDRRESP and component = Engine and status != Done"))
 
+;;;###autoload
 (defun benedict/issue-detail (issue-key)
   "Get details for ISSUE-KEY as plist."
   (benedict/init!)
   (benedict-jira-issue/detail issue-key))
 
+;;;###autoload
 (defun benedict/issue-create ()
   "Create a new jira issue."
   (interactive)
   (benedict/init!)
   (benedict-jira-issue/create))
 
+;;;###autoload
 (defun benedict/issue-update (issue-key field &rest values)
   "Update ISSUE-KEY at FIELD with VALUES."
   (interactive)
@@ -65,6 +74,7 @@
 
 (require 'bd-github-branch)
 
+;;;###autoload
 (defun benedict/spinoff-branch ()
   "Spinoff a branch prompting for an issue or finding one at point."
   (interactive)

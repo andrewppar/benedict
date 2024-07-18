@@ -52,7 +52,8 @@
 	(push entry entries)))
     entries))
 
-(defvar *bd-jira-config/netrc* "")
+;;;###autoload
+(defconst *bd-jira-config/netrc* "")
 
 (defvar *bd-jira-config/config* '())
 
