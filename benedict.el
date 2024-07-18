@@ -28,6 +28,7 @@
 ;;;###autoload
 (defun benedict/init! ()
   "Initialize benedicts configuration."
+  (interactive)
   (benedict-config/init!))
 
 ;;;;;;;
