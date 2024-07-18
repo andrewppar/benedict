@@ -101,7 +101,7 @@
 	     (created (alist-get 'created comment))
 	     (body (alist-get 'body comment)))
 	(push (list :comment body :author author :created created) result))
-      (setq idx (inc idx)))
+      (setq idx (+ idx 1)))
     result))
 
 ;;; todo: need to select relation name based on incoming or outgoing entity
