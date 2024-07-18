@@ -1,0 +1,11 @@
+Definitely not ready for common use 
+Use at your own risk, but have fun if you do and feel free to ask me questions
+
+To get started: 
+
+1. Add a =.netrc= file somewhere with your jira login info
+  #+begin_src
+  machine <ORG>.atlassian.net login <USERNAME>@<EMAIL>.com password <JIRA_LOGIN_TOKEN> port 443
+  #+end_src
+  
+2. =(setq *bd-jira-config/netrc* "<PATH-TO-.netrc>")=
