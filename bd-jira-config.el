@@ -53,7 +53,7 @@
     entries))
 
 ;;;###autoload
-(defconst *bd-jira-config/netrc* "")
+(defvar *bd-jira-config/netrc* "")
 
 (defvar *bd-jira-config/config* '())
 
