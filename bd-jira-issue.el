@@ -188,6 +188,7 @@
 		      (cons "maxResults" "500")
 		      (cons 'fields "*all")))))
 
+
 (defun bd-jira-issue/get-issues-by-reporter (reporter)
   "Get JIRA issues reported by REPORTER."
   (bd-jira-issue/get-issues-from-query
@@ -296,16 +297,20 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 			 *bd-jira-issue/statuses*)))
     (<= status-one-idx status-two-idx)))
 
-(defun benedict-jira-issue/list (&optional query)
-  "Show current list of issues in a buffer with optional jql QUERY."
-  (let* ((jql (or query ""))
-	 (issues (sort (bd-jira-issue/get-issues-from-query jql) #'bd-status<=))
-	 (columns '(:key :status :summary :assignee :reporter)))
+(defun bd-jira-issue/display-issues (issues)
+  "Show ISSUES in a dedicated buffer."
+  (let ((columns '(:key :status :summary :assignee :reporter)))
     (bd-jira-issue--display-table
      columns issues
      '((:summary . bd-jira-issue--truncate))
      '((:status . bd-jira-issue--status-color)
-		      (:key . (lambda (x) "yellow"))))))
+       (:key . (lambda (x) "yellow"))))))
+
+(defun benedict-jira-issue/list (&optional query)
+  "Show current list of issues in a buffer with optional jql QUERY."
+  (let* ((jql (or query ""))
+	 (issues (sort (bd-jira-issue/get-issues-from-query jql) #'bd-status<=)))
+    (bd-jira-issue/display-issues issues)))
 
 (defun benedict-jira-issue/detail (issue-key)
   "Display the details of ISSUE-KEY."
@@ -443,6 +448,23 @@ Potentially coloring cells with COLUMN->COLOR-FN."
    :headers '(("Content-Type" . "application/json")
 	      ("Accept" . "application/json"))
    :data (json-encode (list (cons 'body comment)))))
+
+(defun bd-jira-issue/add-parent (issue-key parent-key)
+  "Add PARENT-KEY as a parent to issue with ISSUE-KEY."
+  (bd-jira-request
+   (format "issue/%s" issue-key)
+   :type "PUT"
+   :headers '(("Content-Type" . "application/json")
+	      ("Accept" . "application/json"))
+   :data
+   (json-encode
+    (list (cons 'fields
+		(list (cons 'parent
+			    (list (cons 'key parent-key)))))))))
+
+(defun bd-jira-issue/remove-parent (issue-key)
+  "Remove PARENT-KEY as a parent from issue with ISSUE-KEY."
+  (bd-jira-issue/add-parent issue-key nil))
 
 
 (provide 'bd-jira-issue)

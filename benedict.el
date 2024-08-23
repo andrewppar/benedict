@@ -44,6 +44,16 @@
    "project = XDRRESP and component = Engine and status != Done"))
 
 ;;;###autoload
+(defun benedict/issue-search (query-text)
+  "Get JIRA issues satisfying QUERY-TEXT."
+  (interactive)
+  (benedict/init!)
+  (bd-jira-issue/display-issues
+   (bd-jira-issue/get-issues-from-query
+    (format "project = XDRRESP and component = Engine and text ~ \"%s\""
+	    query-text))))
+
+;;;###autoload
 (defun benedict/issue-detail (issue-key)
   "Get details for ISSUE-KEY as plist."
   (benedict/init!)
@@ -67,6 +77,8 @@
 	 (bd-jira-issue/add-link issue-key (car values) (cadr values)))
 	((equal field :assign)
 	 (bd-jira-issue/assign issue-key (car values)))
+	((equal field :parent)
+	 (bd-jira-issue/add-parent issue-key (car values)))
 	(t (message (format "Cannot update %s with unrecognized field %s"
 			    issue-key field)))))
 
