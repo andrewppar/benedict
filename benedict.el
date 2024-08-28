@@ -46,7 +46,7 @@
 ;;;###autoload
 (defun benedict/issue-search (query-text)
   "Get JIRA issues satisfying QUERY-TEXT."
-  (interactive)
+  (interactive "sSearch Text: ")
   (benedict/init!)
   (bd-jira-issue/display-issues
    (bd-jira-issue/get-issues-from-query

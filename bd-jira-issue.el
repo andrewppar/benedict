@@ -246,6 +246,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 	      (padding (- column-max (length column-name))))
 	 (insert (format "%s%s" column-name (make-string padding ? )
 			 (push (cons column column-max) column->size)))))
+     (insert "\n")
      (insert (format "%s\n" (make-string (apply #'+ (mapcar #'cdr column->size)) ?=)))
      (dolist (row rows)
        (dolist (column columns)
