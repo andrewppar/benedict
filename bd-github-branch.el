@@ -36,6 +36,7 @@
      (replace-regexp-in-string "\\]" "")
     (replace-regexp-in-string "," "")
     (replace-regexp-in-string "\\." "")
+    (replace-regexp-in-string "'" "")
     (replace-regexp-in-string "\"" "")
     (replace-regexp-in-string ":" "")
     (replace-regexp-in-string "`" "")
