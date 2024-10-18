@@ -381,15 +381,51 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 
 (defconst *benedict-jira-create-issue-buffer* "*benedict-create-jira-issue*")
 
+(defun bd-jira-issue--issue-types ()
+  "Fetch issue types associated with XDR."
+  ;; todo: make a project variable
+  ;; todo: cache this?
+  (thread-last
+    (bd-jira-request
+     "issue/createmeta/XDR/issuetypes"
+     :type "GET"
+     :headers
+     '(("Content-Type" . "application/json")
+       ("Accept" . "application/json")))
+    (alist-get 'issueTypes)
+    (mapcar
+     (lambda (it) (alist-get 'name it)))))
+
 (defun benedict-jira-issue/create ()
   "Generate a buffer to create a new jira issue."
   (interactive)
-  (let ((buffer (switch-to-buffer *benedict-jira-create-issue-buffer*)))
+  (let ((issue-type (completing-read
+		     "issue type: " (bd-jira-issue--issue-types)))
+	(buffer (switch-to-buffer *benedict-jira-create-issue-buffer*)))
     (kill-region (point-min) (point-max))
     (insert "Title: \n")
-    (insert "Issue Type: Task\n")
+    (insert (format "Issue Type: %s\n" issue-type))
     (insert "Parent: \n")
     (insert "Description: \n\n")
+    (cond
+      ((equal issue-type "Bug")
+       (insert
+	(string-join
+	 (list "Steps to reproduce the behavior: "
+	       "Expected behavior: "
+	       "Screenshots: "
+	       (string-join
+		(list
+		 "Browser (please complete the following information):"
+		 " - OS: [e.g. Windows]: "
+		 " - Browser [e.g. firefox, chrome, safari]: "
+		 " -  Version [e.g. 22]: ")
+		"\n")
+	       "Additional Context: ")
+	 "\n\n")))
+      ((equal issue-type "Task")
+       (insert "\n"))
+      (t nil))
     (goto-char 0)
     (markdown-mode)
     (benedict-jira-issue--create-mode 1)))

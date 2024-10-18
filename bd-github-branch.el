@@ -18,7 +18,6 @@
 ;; This is a little more targeted and lightweight than forge.
 ;; Auth is handled by the gh executable itself and only works for github.
 
-
 ;;; Code:
 (require 'vc)
 (require 'magit-branch)
