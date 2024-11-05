@@ -281,8 +281,8 @@ Optionally also specify a JIRA COMPONENT."
     "Minor mode to get input in benedict jira."
   :init-value nil
   :lighter " benedict"
-  :keymap '(([q] . kill-buffer)
-	    ([C-c C-c] . bdjo/send-input-buffer)))
+  :keymap `((,(kbd "q") . kill-buffer)
+	    (,(kbd "C-c C-c") . bdjo/send-input-buffer)))
 
 (defun bdjo/send-input-buffer ()
   "Call the add comment function with the appropriate args from buffer."

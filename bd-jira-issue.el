@@ -337,7 +337,14 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 	     (issue-type (bd-jira-issue--parse-create-buffer-line (cadr lines)))
 	     (parent (bd-jira-issue--parse-create-buffer-line (caddr lines)))
 	     (description (bd-jira-issue--parse-create-buffer-line
-			   (string-join (cdddr lines) "\n"))))
+			   (string-join (cdddr lines) "\n")))
+	     (tmp-file (make-temp-file "benedict-issue-create")))
+	(save-window-excursion
+	  (let ((buffer (find-file tmp-file)))
+	    (insert contents)
+	    (save-buffer)
+	    (kill-buffer buffer)))
+	(message (format "issue content saved to: %s" tmp-file))
 	(list :title title
 	      :issue-type issue-type
 	      :parent parent
