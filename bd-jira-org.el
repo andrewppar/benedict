@@ -20,14 +20,14 @@
 ;;; API:
 
 ;; Customizable Variables
-;;  bdjo/priorities
-;;  bdjo/jira-file
-;;  bdjo/keywords
+;;  bd-jira-org/priorities
+;;  bd-jira-org/jira-file
+;;  bd-jira-org/keywords
 ;;
 ;; Functions:
-;; bdjo/->org
-;; bdjo/add-issue
-;; bdjo/refresh
+;; bd-jira-org/->org
+;; bd-jira-org/add-issue
+;; bd-jira-org/refresh
 
 ;;; Code:
 (require 'org)
@@ -37,17 +37,17 @@
 
 ;;; From JIRA
 
-(defvar bdjo/priorities '()
+(defvar bd-jira-org/priorities '()
   "An alist that maps organizational JIRA priorities to org priorities.")
 
-(defvar bdjo/jira-file nil
+(defvar bd-jira-org/jira-file nil
   "The file that holds jira information.")
 
-(defun bdjo-priority->org-priority (priority)
+(defun bd-jira-org--priority->org-priority (priority)
   "Convert jira PRIORITY to an org priority level."
-  (plist-get bdjo/priorities priority #'equal))
+  (plist-get bd-jira-org/priorities priority #'equal))
 
-(defun bdjo-in-progress-keywords ()
+(defun bd-jira-org--in-progress-keywords ()
   "Get org keywords that represent that something is not completed."
   (let ((result '()))
     (dolist (keywords (reverse org-todo-keywords))
@@ -61,29 +61,29 @@
 	  (push key result))))
     result))
 
-(defun bdjo-not-done-p (status)
+(defun bd-jira-org--not-done-p (status)
   "Check if STATUS is an in progress status."
-  (member status (bdjo-in-progress-keywords)))
+  (member status (bd-jira-org--in-progress-keywords)))
 
-(defun bdjo-make-stars (number)
+(defun bd-jira-org--make-stars (number)
   "Make a string of NUMBER many stars."
   (make-string number ?\*))
 
-(defun bdjo-split-subtasks (subtasks subtask-depth)
+(defun bd-jira-org--split-subtasks (subtasks subtask-depth)
   "INTERNAL: This function is only for implementation.
 
 It splits SUBTASKS on SUBTASK-DEPTH number of *s, when SUBTASKS is not NIL."
   (when subtasks
-    (let ((split-regex (regexp-quote (bdjo-make-stars subtask-depth))))
+    (let ((split-regex (regexp-quote (bd-jira-org--make-stars subtask-depth))))
       (mapcar #'string-trim (string-split subtasks split-regex t)))))
 
-(defvar bdjo-subtask-depth 4)
+(defvar bd-jira-org--subtask-depth 4)
 
-(defvar bdjo/keywords (list :default "DONE")
+(defvar bd-jira-org/keywords (list :default "DONE")
   "An alist of JIRA status keywords mapped to org todo statuses.
 A :default key should be specified - it is set to DONE otherwise.")
 
-(defun bdjo-derived-in-progress-todo-key (subtasks)
+(defun bd-jira-org--derived-in-progress-todo-key (subtasks)
   "Return the todo key for SUBTASKS if any is in progress."
   (seq-some
    (lambda (subtask)
@@ -91,17 +91,17 @@ A :default key should be specified - it is set to DONE otherwise.")
       (lambda (keyword)
 	(when (string-prefix-p keyword subtask)
 	  keyword))
-      (bdjo-in-progress-keywords)))
-   (bdjo-split-subtasks subtasks bdjo-subtask-depth)))
+      (bd-jira-org--in-progress-keywords)))
+   (bd-jira-org--split-subtasks subtasks bd-jira-org--subtask-depth)))
 
-(defun bdjo-status->todo-key (status subtasks)
+(defun bd-jira-org--status->todo-key (status subtasks)
   "Determine the todo key for jira STATUS with SUBTASKS."
-  (or (bdjo-derived-in-progress-todo-key subtasks)
-      (plist-get bdjo/keywords status #'equal)
-      (plist-get bdjo/keywords :default)
+  (or (bd-jira-org--derived-in-progress-todo-key subtasks)
+      (plist-get bd-jira-org/keywords status #'equal)
+      (plist-get bd-jira-org/keywords :default)
       "DONE"))
 
-(defun bdjo-quote (string)
+(defun bd-jira-org--quote (string)
   "Ensure that STRING is insertable in rog mode."
   (if string
       (string-join
@@ -109,7 +109,7 @@ A :default key should be specified - it is set to DONE otherwise.")
        "\n")
     ""))
 
-(defun bdjo-key->subtasks ()
+(defun bd-jira-org--key->subtasks ()
   "Generate alist of jira issue key to subtasks from current buffer."
   (let ((result '()))
     (save-excursion
@@ -122,21 +122,21 @@ A :default key should be specified - it is set to DONE otherwise.")
 	     (push (cons key subtasks) result))))))
     result))
 
-(defun bdjo-subtask-get (key->subtasks key)
+(defun bd-jira-org--subtask-get (key->subtasks key)
   "Get subtasks for KEY in KEY->SUBTASKS alist."
   (alist-get key key->subtasks nil nil #'equal))
 
-(defun bdjo-jira-md->org (string)
+(defun bd-jira-org--jira-md->org (string)
   "Use pandoc to convert STRING to org mode if available."
   ;; maybe cache pandoc exetule check
   (let ((executable (string-trim (shell-command-to-string "which pandoc"))))
     (if (equal executable "")
-	(bdjo-quote string)
-      (bdjo-quote
+	(bd-jira-org--quote string)
+      (bd-jira-org--quote
        (shell-command-to-string
 	(format "echo \"%s\" | %s -f jira -t org" string executable))))))
 
-(defun bdjo-serialize-comments (stars comments)
+(defun bd-jira-org--serialize-comments (stars comments)
   "Serialize COMMENTS to org mode with prefix STARS."
   (string-join
    (mapcar
@@ -146,7 +146,7 @@ A :default key should be specified - it is set to DONE otherwise.")
 	(string-join
 	 (list
 	  (format "%s comment:" stars)
-	  (bdjo-quote comment)
+	  (bd-jira-org--quote comment)
 	  ":PROPERTIES:"
 	  (format ":author: %s" author)
 	  (format ":created: %s" created)
@@ -155,76 +155,76 @@ A :default key should be specified - it is set to DONE otherwise.")
     comments)
    "\n"))
 
-(defun bdjo-key->link (issue-key)
+(defun bd-jira-org--key->link (issue-key)
   "Create a link to browse issue from ISSUE-KEY."
   (format "https://%s/browse/%s"
 	  (plist-get *bd-jira-config/config* :domain)
 	  issue-key))
 
-(defun bdjo/->org (issue key->subtasks &optional depth keep-complete?)
+(defun bd-jira-org/->org (issue key->subtasks &optional depth keep-complete?)
   "Format ISSUE as an org mode string.
 Use KEY->SUBTASKS to determine some of it's state.
 Optionally specify the DEPTH to make the issue.
 Optionally specify KEEP-COMPLETE? to retian items that are no longer
 in TODO or PROG states."
   (let ((depth (or depth 1))
-	(key-stars (bdjo-make-stars depth))
-	(main-stars (bdjo-make-stars (+ 1 depth)))
-	(task-stars (bdjo-make-stars (+ 2 depth))))
+	(key-stars (bd-jira-org--make-stars depth))
+	(main-stars (bd-jira-org--make-stars (+ 1 depth)))
+	(task-stars (bd-jira-org--make-stars (+ 2 depth))))
     (cl-destructuring-bind
 	  (&key assignee created key description parent priority reporter
-		status comments summary related type &allow-other-keys)
+		status comments summary sprints related  type &allow-other-keys)
 	issue
-      (let* ((org-priority (bdjo-priority->org-priority priority))
-	     (link (format "[[%s][%s]]" (bdjo-key->link key) key))
+      (let* ((org-priority (bd-jira-org--priority->org-priority priority))
+	     (link (format "[[%s][%s]]" (bd-jira-org--key->link key) key))
 	     (tag (format ":%s:" (string-replace "-" "_" key)))
-	     (org-status (bdjo-status->todo-key status (bdjo-subtask-get key->subtasks key))))
+	     (org-status (bd-jira-org--status->todo-key status (bd-jira-org--subtask-get key->subtasks key))))
 	(when (equal type "Epic")
 	  (setq tag (format "%sepic:" tag)))
-	(when (or (and (not keep-complete?) (bdjo-not-done-p org-status))
+	(when (or (and (not keep-complete?) (bd-jira-org--not-done-p org-status))
 		  keep-complete?)
 	  (let ((main-task (format "%s %s [#%s] %s: %s %s"
 				   key-stars org-status org-priority link summary tag))
 		(org-desc (format "%s description:\n%s"
-				  main-stars (bdjo-jira-md->org description)))
-		(org-comments (bdjo-serialize-comments main-stars comments)))
+				  main-stars (bd-jira-org--jira-md->org description)))
+		(org-comments (bd-jira-org--serialize-comments main-stars comments))
+		(properties (list (format ":assignee: %s" assignee)
+				  (format ":status: %s" status)
+				  (format ":reporter: %s" reporter)
+				  (format ":type: %s" type)
+				  (format ":parent: %s" parent)
+				  (format ":priority: %s" priority)
+				  (format ":title: %s" summary)
+				  (format ":created: %s" created)
+				  (format ":ID: %s" key)
+				  ":END:")))
+	    (when sprints
+	      (dolist (sprint sprints)
+		(push (format ":sprint: %s" (plist-get sprint :name)) properties)))
+	    (push ":PROPERTIES:" properties)
 	    (string-join
-	     (list main-task
-		   ":PROPERTIES:"
-		   (format ":assignee: %s" assignee)
-		   (format ":status: %s" status)
-		   (format ":reporter: %s" reporter)
-		   (format ":type: %s" type)
-		   (format ":parent: %s" parent)
-		   (format ":priority: %s" priority)
-		   (format ":title: %s" summary)
-		   (format ":created: %s" created)
-		   (format ":ID: %s" key)
-		   ":END:"
-		   org-desc
-		   org-comments
-		   "\n")
+	     (seq-concatenate 'list (list main-task) properties (list org-desc org-comments "\n"))
 	     "\n")))))))
 
-(defun bdjo/add-issue (issue-key)
+(defun bd-jira-org/add-issue (issue-key)
   "Add issue with ISSUE-KEY to org file.
 If it exists remove it so it can be refreshed."
   (save-excursion
-    (when-let ((pos (org-id-find-id-in-file issue-key bdjo/jira-file 'marker)))
+    (when-let ((pos (org-id-find-id-in-file issue-key bd-jira-org/jira-file 'marker)))
 	  (goto-char pos)
 	  (kill-region pos (org-end-of-subtree t)))
     (goto-char (point-max))
-    (when-let ((issue (bdjo/->org (benedict/issue-detail issue-key) nil 2 t)))
+    (when-let ((issue (bd-jira-org/->org (benedict/issue-detail issue-key) nil 2 t)))
       (insert issue))))
 
-(defun bdjo-insert-subtasks (key->task)
+(defun bd-jira-org--insert-subtasks (key->task)
   "Insert subtasks for any issues in KEY->TASK."
   (dolist (key-with-saved-tasks key->task)
     (let* ((key (car key-with-saved-tasks))
-	   (pos (org-id-find-id-in-file key bdjo/jira-file 'marker)))
+	   (pos (org-id-find-id-in-file key bd-jira-org/jira-file 'marker)))
       (unless pos
-	(bdjo/add-issue key)
-	(setq pos (org-id-find-id-in-file key bdjo/jira-file 'marker)))
+	(bd-jira-org/add-issue key)
+	(setq pos (org-id-find-id-in-file key bd-jira-org/jira-file 'marker)))
       (goto-char pos)
       (org-goto-first-child)
       (let ((depth (org-current-level)))
@@ -237,7 +237,7 @@ If it exists remove it so it can be refreshed."
 	  (when (and subtasks (not (equal (string-trim subtasks) "")))
 	    (insert (format "%s" subtasks))))))))
 
-(defun bdjo-build-refresh-query (project component)
+(defun bd-jira-org--build-refresh-query (project component)
   "Build a query for JIRA to fetch issues for PROJECT and COMPONENT."
   (let ((clauses '()))
     (push "status != Done" clauses)
@@ -247,13 +247,13 @@ If it exists remove it so it can be refreshed."
     (string-join clauses " and ")))
 
 ;; TODO: generalize this to handle multiple projects
-(defun bdjo/refresh (project &optional component)
+(defun bd-jira-org/refresh (project &optional component)
   "Refresh the file that has JIRA issues using PROJECT.
 Optionally also specify a JIRA COMPONENT."
   (benedict/init!)
   (save-excursion
     (goto-char (point-min))
-    (let ((key->task (bdjo-key->subtasks)))
+    (let ((key->task (bd-jira-org--key->subtasks)))
       (kill-region (point-min) (point-max))
       (insert "#+STARTUP: show2levels\n")
       (insert (format "* %s\n" project))
@@ -261,57 +261,57 @@ Optionally also specify a JIRA COMPONENT."
       (insert (format ":CATEGORY: %s\n" project))
       (insert ":TIMELINE_FACE: \"#225E8B\"\n")
       (insert ":END:\n")
-      (let* ((query (bdjo-build-refresh-query project component))
+      (let* ((query (bd-jira-org--build-refresh-query project component))
 	     (issues (bd-jira-issue/get-issues-from-query query)))
 	(goto-char (point-max))
 	(insert "\n")
 	(dolist (issue issues)
-	  (when-let ((issue-text (bdjo/->org issue key->task 2)))
+	  (when-let ((issue-text (bd-jira-org/->org issue key->task 2)))
 	    (insert issue-text))))
-      (bdjo-insert-subtasks key->task))))
+      (bd-jira-org--insert-subtasks key->task))))
 
 ;;; To JIJRA
 
 ;; comment
-(defconst bdjo-input-buffer "*benedict-jira-input*")
-(defvar bdjo-input-data '())
-(defvar bdjo-saved-layout ())
+(defconst bd-jira-org--input-buffer "*benedict-jira-input*")
+(defvar bd-jira-org--input-data '())
+(defvar bd-jira-org--saved-layout ())
 
-(define-minor-mode bdjo/input-mode
+(define-minor-mode bd-jira-org/input-mode
     "Minor mode to get input in benedict jira."
   :init-value nil
   :lighter " benedict"
   :keymap `((,(kbd "q") . kill-buffer)
-	    (,(kbd "C-c C-c") . bdjo/send-input-buffer)))
+	    (,(kbd "C-c C-c") . bd-jira-org/send-input-buffer)))
 
-(defun bdjo/send-input-buffer ()
+(defun bd-jira-org/send-input-buffer ()
   "Call the add comment function with the appropriate args from buffer."
   (interactive)
-  (let* ((buffer (switch-to-buffer bdjo-input-buffer))
+  (let* ((buffer (switch-to-buffer bd-jira-org--input-buffer))
 	 (to-send (buffer-substring-no-properties (point-min) (point-max)))
-	 (key (alist-get 'key bdjo-input-data)))
+	 (key (alist-get 'key bd-jira-org--input-data)))
     (bd-jira-issue/add-comment key to-send)
-    (set-window-configuration bdjo-saved-layout)
-    (setq bdjo-saved-layout nil
-	  bdjo-input-data nil)
+    (set-window-configuration bd-jira-org--saved-layout)
+    (setq bd-jira-org--saved-layout nil
+	  bd-jira-org--input-data nil)
     (kill-buffer buffer)))
 
-(defun bdjo-get-input ()
+(defun bd-jira-org--get-input ()
   "Generate a new buffer to get input."
-  (setq bdjo-saved-layout (current-window-configuration))
+  (setq bd-jira-org--saved-layout (current-window-configuration))
   (select-window (split-window-below nil (frame-root-window)))
-  (switch-to-buffer bdjo-input-buffer)
+  (switch-to-buffer bd-jira-org--input-buffer)
   (kill-region (point-min) (point-max))
-  (bdjo/input-mode 1))
+  (bd-jira-org/input-mode 1))
 
-(defun bdjo/add-comment ()
+(defun bd-jira-org/add-comment ()
   "Add a comment to the issue at point."
   (interactive)
   (let ((key (org-entry-get (point) "ID" 'selection)))
-    (push (cons 'key key) bdjo-input-data)
-    (bdjo-get-input)))
+    (push (cons 'key key) bd-jira-org--input-data)
+    (bd-jira-org--get-input)))
 
-(defun bdjo/current-buffer-as-comment (issue-key)
+(defun bd-jira-org/current-buffer-as-comment (issue-key)
   "Add current buffer as a comment to ISSUE-KEY."
   (interactive (list (read-string "issue: ")))
   (let ((comment (buffer-substring-no-properties (point-min) (point-max))))
@@ -319,7 +319,7 @@ Optionally also specify a JIRA COMPONENT."
 
 ;; status
 
-(defun bdjo/change-status (status)
+(defun bd-jira-org/change-status (status)
   "Update the status of the issue at point to STATUS."
   (interactive
    (list
@@ -332,15 +332,11 @@ Optionally also specify a JIRA COMPONENT."
 
 ;; assign
 
-(defun bdjo/assign ()
+(defun bd-jira-org/assign ()
   "Assign issue at point to current user."
   (interactive)
   (let ((key (org-entry-get (point) "ID" 'selective)))
     (benedict/issue-update key :assign)))
 
-
 (provide 'bd-jira-org)
-;;; bd-jira-org.el ends here
-;; Local Variables:
-;; read-symbol-shorthands: (("bdjo-" . "bd-jira-org--") ("bdjo/" . "bd-jira-org/"))
-;; End:
+;;bd-jira-org.el ends here

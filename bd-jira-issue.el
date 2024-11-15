@@ -89,6 +89,29 @@
     "Related" "Relates"
     "Test" "Test (migrated)"))
 
+;;; Custom Deserialization
+;; Example set this const whereever with whatever values
+(defun bd-jira-issue--parse-sprints (sprint-array)
+  "Parse an array of jira sprint representations into the internal one."
+  (mapcar
+   (lambda (sprint)
+     (let ((name (alist-get 'name sprint))
+	   (state (alist-get 'state sprint))
+	   (goal (alist-get 'goal sprint))
+	   (start (alist-get 'startDate sprint))
+	   (end (alist-get 'endDAte sprint)))
+       (list :name name
+	     :state state
+	     :goal goal
+	     :start start
+	     :end end)))
+   sprint-array))
+
+(defconst *bd-jira-issue/custom-fields*
+  (list
+   (cons 'customfield_10020
+	 (list :name :sprints :parse-fn #'bd-jira-issue--parse-sprints))))
+
 
 (defun bd-jira-issue--parse-comments (fields)
   "Get comments if there are any from FIELDS."
@@ -152,19 +175,26 @@
 	 (created (alist-get 'created fields ""))
 	 (comments (bd-jira-issue--parse-comments fields))
 	 (related-issues (bd-jira-issue--parse-relations fields))
-	 (status (alist-get 'name (alist-get 'status fields) "")))
-    (list :key key
-	  :parent parent
-	  :assignee assignee
-	  :reporter reporter
-	  :type issue-type
-	  :summary summary
-	  :description description
-	  :comments comments
-	  :priority priority
-	  :created created
-	  :related related-issues
-	  :status status)))
+	 (status (alist-get 'name (alist-get 'status fields) ""))
+	 (result (list :key key
+		       :parent parent
+		       :assignee assignee
+		       :reporter reporter
+		       :type issue-type
+		       :summary summary
+		       :description description
+		       :comments comments
+		       :priority priority
+		       :created created
+		       :related related-issues
+		       :status status)))
+    (dolist (binding *bd-jira-issue/custom-fields*)
+      (let* ((jira-value (alist-get (car binding) fields))
+	    (name (plist-get (cdr binding) :name))
+	    (value (funcall (plist-get (cdr binding) :parse-fn) jira-value)))
+	(push value result)
+	(push name result)))
+    result))
 
 (defun bd-jira-issue--parse-issue-response (response)
   "Turn RESPONSE into a list of plists."
@@ -509,6 +539,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 (defun bd-jira-issue/remove-parent (issue-key)
   "Remove PARENT-KEY as a parent from issue with ISSUE-KEY."
   (bd-jira-issue/add-parent issue-key nil))
+
 
 
 (provide 'bd-jira-issue)
