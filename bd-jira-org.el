@@ -338,5 +338,13 @@ Optionally also specify a JIRA COMPONENT."
   (let ((key (org-entry-get (point) "ID" 'selective)))
     (benedict/issue-update key :assign)))
 
+;; link
+
+(defun bd-jira-org/link ()
+  "Link issue at point to other issues."
+  (interactive)
+  (let ((key (org-entyr-get (point) "ID" 'selective)))
+    (benedict/issue-update key :link)))
+
 (provide 'bd-jira-org)
 ;;bd-jira-org.el ends here
