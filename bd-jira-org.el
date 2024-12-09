@@ -109,6 +109,10 @@ A :default key should be specified - it is set to DONE otherwise.")
        "\n")
     ""))
 
+(defun bd-jira-org--key-at-point ()
+  "Get the key for the issue at point."
+  (org-entry-get (point) "ID" 'select))
+
 (defun bd-jira-org--key->subtasks ()
   "Generate alist of jira issue key to subtasks from current buffer."
   (let ((result '()))
@@ -211,8 +215,8 @@ in TODO or PROG states."
 If it exists remove it so it can be refreshed."
   (save-excursion
     (when-let ((pos (org-id-find-id-in-file issue-key bd-jira-org/jira-file 'marker)))
-	  (goto-char pos)
-	  (kill-region pos (org-end-of-subtree t)))
+      (goto-char pos)
+      (kill-region pos (org-end-of-subtree t)))
     (goto-char (point-max))
     (when-let ((issue (bd-jira-org/->org (benedict/issue-detail issue-key) nil 2 t)))
       (insert issue))))
@@ -307,7 +311,7 @@ Optionally also specify a JIRA COMPONENT."
 (defun bd-jira-org/add-comment ()
   "Add a comment to the issue at point."
   (interactive)
-  (let ((key (org-entry-get (point) "ID" 'selection)))
+  (let ((key (bd-jira-org--key-at-point)))
     (push (cons 'key key) bd-jira-org--input-data)
     (bd-jira-org--get-input)))
 
@@ -327,7 +331,7 @@ Optionally also specify a JIRA COMPONENT."
 		     (mapcar #'car *bd-jira-issue/transitions*)
 		     nil
 		     t)))
-  (let ((key (org-entry-get (point) "ID" 'selective)))
+  (let ((key (bd-jira-org--key-at-point)))
     (benedict/issue-update key :status status)))
 
 ;; assign
@@ -335,7 +339,7 @@ Optionally also specify a JIRA COMPONENT."
 (defun bd-jira-org/assign ()
   "Assign issue at point to current user."
   (interactive)
-  (let ((key (org-entry-get (point) "ID" 'selective)))
+  (let ((key (bd-jira-org--key-at-point)))
     (benedict/issue-update key :assign)))
 
 ;; link
@@ -343,7 +347,7 @@ Optionally also specify a JIRA COMPONENT."
 (defun bd-jira-org/link ()
   "Link issue at point to other issues."
   (interactive)
-  (let ((key (org-entyr-get (point) "ID" 'selective)))
+  (let ((key (bd-jira-org--key-at-point)))
     (benedict/issue-update key :link)))
 
 (provide 'bd-jira-org)
