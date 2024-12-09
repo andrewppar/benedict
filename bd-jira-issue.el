@@ -73,9 +73,7 @@
   ;;				("Accept" . "application/json")))
   ;;  (alist-get 'issueLinkTypes)
   ;;  (mapcar
-  ;;   (lambda (link-type) (alist-get 'name link-type)
-  ;;     ))
-  ;;  remove-duplicates)
+  ;;   (lambda (link-type) (alist-get 'name link-type))))
   '("Blockers" "Blocks"
     "Bonfire Testing"
     "Cloners"

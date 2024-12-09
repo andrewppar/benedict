@@ -347,8 +347,10 @@ Optionally also specify a JIRA COMPONENT."
 (defun bd-jira-org/link ()
   "Link issue at point to other issues."
   (interactive)
-  (let ((key (bd-jira-org--key-at-point)))
-    (benedict/issue-update key :link)))
+  (let ((key (bd-jira-org--key-at-point))
+	(relation (completing-read "relation: " *bd-jira-issue/link-types*))
+	(linked-issue (read-string "linked issue key: ")))
+    (benedict/issue-update key :link relation linked-issue)))
 
 (provide 'bd-jira-org)
 ;;bd-jira-org.el ends here
