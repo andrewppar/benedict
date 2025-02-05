@@ -218,7 +218,7 @@ If it exists remove it so it can be refreshed."
       (goto-char pos)
       (kill-region pos (org-end-of-subtree t)))
     (goto-char (point-max))
-    (when-let ((issue (bd-jira-org/->org (benedict/issue-detail issue-key) nil 2 t)))
+    (when-let ((issue (bd-jira-org/->org (benedict-jira-issue/detail issue-key) nil 2 t)))
       (insert issue))))
 
 (defun bd-jira-org--insert-subtasks (key->task)
