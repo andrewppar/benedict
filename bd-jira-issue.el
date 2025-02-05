@@ -337,8 +337,21 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 (defun bd-jira-issue--colorize (text color)
   (propertize text 'face `(:foreground ,color)))
 
+(defun bd-jira-issue--sprints-string (sprints-data)
+  "Display sprints in a human readable way."
+  (if sprints-data
+      (string-join
+       (mapcar
+	(lambda (sprint)
+	  (cl-destructuring-bind (&key name state &allow-other-keys) sprint
+	    (let ((color (cond ((equal state "active") "green")
+			       ((equal state "future") "light blue")
+			       ((equal state "closed") "orange"))))
+	      (bd-jira-issue--colorize name color))))
+	sprints-data)
+       ", ")
+    (propertize "None" 'face '(:background "dark grey" :foreground "white"))))
 
-;; todo: serialize sprint
 ;; todo: color priority
 (defun bd-jira-issue/display-issue-detail (issue)
   (cl-destructuring-bind (&key
@@ -368,7 +381,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 	      (format "Priority: %s" priority)
 	      (format "Assigned To: %s" assignee)
 	      (format "Created By: %s" reporter)
-	      (format "Sprints: %s" sprints)
+	      (format "Sprints: %s" (bd-jira-issue--sprints-string sprints))
 	      ""
 	      (bd-jira-issue--colorize "Description:" "yellow")
 	      description
@@ -384,7 +397,8 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 				      (list comment "" (format "%s on %s" author created) "" comment-sep "")
 				      "\n")))
 		 (setq result (reverse (cons comment-string (reverse result)))))))))
-       (insert (string-join result "\n"))))))
+       (insert (string-join result "\n"))
+       (goto-char (point-min))))))
 
 (defun benedict-jira-issue/list (&optional query)
   "Show current list of issues in a buffer with optional jql QUERY."
