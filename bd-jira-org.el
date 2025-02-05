@@ -171,10 +171,10 @@ Use KEY->SUBTASKS to determine some of it's state.
 Optionally specify the DEPTH to make the issue.
 Optionally specify KEEP-COMPLETE? to retian items that are no longer
 in TODO or PROG states."
-  (let ((depth (or depth 1))
-	(key-stars (bd-jira-org--make-stars depth))
-	(main-stars (bd-jira-org--make-stars (+ 1 depth)))
-	(task-stars (bd-jira-org--make-stars (+ 2 depth))))
+  (let* ((depth (or depth 1))
+	 (key-stars (bd-jira-org--make-stars depth))
+	 (main-stars (bd-jira-org--make-stars (+ 1 depth)))
+	 (task-stars (bd-jira-org--make-stars (+ 2 depth))))
     (cl-destructuring-bind
 	  (&key assignee created key description parent priority reporter
 		status comments summary sprints related  type &allow-other-keys)

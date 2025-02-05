@@ -110,7 +110,6 @@
    (cons 'customfield_10020
 	 (list :name :sprints :parse-fn #'bd-jira-issue--parse-sprints))))
 
-
 (defun bd-jira-issue--parse-comments (fields)
   "Get comments if there are any from FIELDS."
   (let* ((comment-vec (alist-get 'comments (alist-get 'comment fields)))
@@ -260,7 +259,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
   (bd-jira-issue--with-view-buffer
    (let ((column->size '())
 	 (rows '()))
-     (kill-region (point-min) (point-max))
+     (delete-region (point-min) (point-max))
      (dolist (row table)
        (let ((new-row '()))
 	 (dolist (column columns)
@@ -334,6 +333,58 @@ Potentially coloring cells with COLUMN->COLOR-FN."
      '((:summary . bd-jira-issue--truncate))
      '((:status . bd-jira-issue--status-color)
        (:key . (lambda (x) "yellow"))))))
+
+(defun bd-jira-issue--colorize (text color)
+  (propertize text 'face `(:foreground ,color)))
+
+
+;; todo: serialize sprint
+;; todo: color priority
+(defun bd-jira-issue/display-issue-detail (issue)
+  (cl-destructuring-bind (&key
+			  sprints key parent assignee reporter
+			  type summary comments priority status
+			  description &allow-other-keys)
+      issue
+    (bd-jira-issue--with-view-buffer
+     (delete-region (point-min) (point-max))
+     (let* ((key-string (if (or (not parent) (equal parent ""))
+			    (bd-jira-issue--colorize key "yellow")
+			  (format "%s/%s"
+				  (bd-jira-issue--colorize parent "orange")
+				  (bd-jira-issue--colorize key "yellow"))))
+	    (title-string
+	     (format "%s %s: %s"
+		     (bd-jira-issue--colorize type "cyan")
+		     key-string
+		     summary))
+	    (separator (make-string (length title-string) ?=))
+	    (result
+	     (list
+	      title-string
+	      separator
+	      (format "Status: %s" (bd-jira-issue--colorize
+				    status (bd-jira-issue--status-color status)))
+	      (format "Priority: %s" priority)
+	      (format "Assigned To: %s" assignee)
+	      (format "Created By: %s" reporter)
+	      (format "Sprints: %s" sprints)
+	      ""
+	      (bd-jira-issue--colorize "Description:" "yellow")
+	      description
+	      "")))
+       (when comments
+	 (let ((comment-title (bd-jira-issue--colorize "Comments:" "yellow"))
+	       (comment-sep (make-string (length title-string) ?-)))
+	   (setq result (reverse (cons "" (cons comment-title (reverse result)))))
+	   (dolist (comment comments)
+	     (cl-destructuring-bind (&key comment author created &allow-other-keys)
+		 comment
+	       (let ((comment-string (string-join
+				      (list comment "" (format "%s on %s" author created) "" comment-sep "")
+				      "\n")))
+		 (setq result (reverse (cons comment-string (reverse result)))))))))
+       (insert (string-join result "\n"))))))
 
 (defun benedict-jira-issue/list (&optional query)
   "Show current list of issues in a buffer with optional jql QUERY."
@@ -538,7 +589,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
   "Remove PARENT-KEY as a parent from issue with ISSUE-KEY."
   (bd-jira-issue/add-parent issue-key nil))
 
-
+(defun bd-jira-issue/add-sprint (issue-key sprint-name))
 
 (provide 'bd-jira-issue)
 ;;; bd-jira-issue.el ends here

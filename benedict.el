@@ -56,8 +56,10 @@
 ;;;###autoload
 (defun benedict/issue-detail (issue-key)
   "Get details for ISSUE-KEY as plist."
+  (interactive "sIssue Key: ")
   (benedict/init!)
-  (benedict-jira-issue/detail issue-key))
+  (bd-jira-issue/display-issue-detail
+   (benedict-jira-issue/detail issue-key)))
 
 ;;;###autoload
 (defun benedict/issue-create ()
