@@ -481,7 +481,8 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 		 :type "POST"
 		 :headers '(("Content-Type" . "application/json")
 			    ("Accept" . "application/json"))
-		 :data (json-encode (list (cons 'fields fields))))))))
+		 :data (json-encode (list (cons 'fields fields)))))
+	  (message result))))
     ;; Kill the buffer
     (kill-buffer nil)))
 
