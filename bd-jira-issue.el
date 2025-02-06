@@ -239,7 +239,8 @@
      (bd-jira-issue--view-mode 1)
      (kill-region (point-min) (point-max))
      (progn ,@body)
-     (read-only-mode 1)))
+     (read-only-mode 1)
+     (goto-char (point-min))))
 
 (defun bd-jira-issue--get-column-max
     (column rows)
@@ -294,6 +295,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 	((equal status "Done") "red")
 	((equal status "In Progress") "orange")
 	((equal status "Backlog") "grey")
+	((equal status "Ready for QA") "green")
 	(t "cyan")))
 
 (defun bd-jira-issue--truncate (string &optional width)
@@ -350,9 +352,18 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 	      (bd-jira-issue--colorize name color))))
 	sprints-data)
        ", ")
-    (propertize "None" 'face '(:background "dark grey" :foreground "white"))))
+    "None"))
 
-;; todo: color priority
+(defun bd-jira-issue--priority-string (priority)
+  (if-let ((color (cond
+		    ((equal priority "Lowest") "light blue")
+		    ((equal priority "Low") "cyan")
+		    ((equal priority "Medium") "yellow")
+		    ((equal priority "High") "orange")
+		    ((equal priority "Highest") "red"))))
+      (bd-jira-issue--colorize priority color)
+    priority))
+
 (defun bd-jira-issue/display-issue-detail (issue)
   (cl-destructuring-bind (&key
 			  sprints key parent assignee reporter
@@ -378,18 +389,22 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 	      separator
 	      (format "Status: %s" (bd-jira-issue--colorize
 				    status (bd-jira-issue--status-color status)))
-	      (format "Priority: %s" priority)
+	      (format "Priority: %s" (bd-jira-issue--priority-string priority))
 	      (format "Assigned To: %s" assignee)
 	      (format "Created By: %s" reporter)
 	      (format "Sprints: %s" (bd-jira-issue--sprints-string sprints))
 	      ""
 	      (bd-jira-issue--colorize "Description:" "yellow")
+	      "------------"
+	      ""
 	      description
 	      "")))
        (when comments
 	 (let ((comment-title (bd-jira-issue--colorize "Comments:" "yellow"))
-	       (comment-sep (make-string (length title-string) ?-)))
-	   (setq result (reverse (cons "" (cons comment-title (reverse result)))))
+	       (comment-sep (bd-jira-issue--colorize
+			     (make-string (length title-string) ?-) "yellow")))
+	   (setq result
+		 (reverse (cons "" (cons "---------" (cons comment-title (reverse result))))))
 	   (dolist (comment comments)
 	     (cl-destructuring-bind (&key comment author created &allow-other-keys)
 		 comment
@@ -397,8 +412,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 				      (list comment "" (format "%s on %s" author created) "" comment-sep "")
 				      "\n")))
 		 (setq result (reverse (cons comment-string (reverse result)))))))))
-       (insert (string-join result "\n"))
-       (goto-char (point-min))))))
+       (insert (string-join result "\n"))))))
 
 (defun benedict-jira-issue/list (&optional query)
   "Show current list of issues in a buffer with optional jql QUERY."
