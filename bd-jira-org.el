@@ -36,6 +36,9 @@
 
 
 ;;; From JIRA
+(defvar bd-jira-org/board-ids '()
+  "A list of integers representing boards that are relevant.
+   To find the relevant list of ids call `bd-jira-board/list`.")
 
 (defvar bd-jira-org/priorities '()
   "An alist that maps organizational JIRA priorities to org priorities.")
@@ -351,6 +354,27 @@ Optionally also specify a JIRA COMPONENT."
 	(relation (completing-read "relation: " *bd-jira-issue/link-types*))
 	(linked-issue (read-string "linked issue key: ")))
     (benedict/issue-update key :link relation linked-issue)))
+
+;; sprint
+
+(defun bd-jira-org/add-issue-to-sprint ()
+  "Add issue at point to a sprint."
+  (interactive)
+  (benedict/init!)
+  (let* ((key (bd-jira-org--key-at-point))
+	 (sprints (bd-jira-board/active-sprints bd-jira-org/board-ids))
+	 (selected-sprint (completing-read
+			  "sprint: "
+			  (mapcar
+			   (lambda (sprint) (plist-get sprint :name))
+			   sprints)
+			  nil t))
+	 (sprint-id (seq-some
+		     (lambda (sprint)
+		       (when (equal (plist-get sprint :name) selected-sprint)
+			 (plist-get sprint :id)))
+		     sprints)))
+    (benedict/issue-update key :sprint sprint-id)))
 
 (provide 'bd-jira-org)
 ;;bd-jira-org.el ends here

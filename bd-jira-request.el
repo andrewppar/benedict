@@ -20,52 +20,47 @@
 
 ;;; Code:
 (require 'bd-jira-config)
+(require 'cl-lib)
+(require 'request)
 
-(cl-defun bd-jira-request (path &key type headers parameters data)
-  "Make a get request for PATH.
-Optionally specify TYPE - the default is GET.
-Optionally specify HEADERS, PARAMETERS or DATA."
+(defun bd-jira-request--request
+    (jira-segment path rest-method headers parameters data)
+  "Make a request to JIRA-SEGMENT - a hard coded endpoint specified by
+:agile or :standard.
+Use REST-METHOD at PATH for that endpoing. Passing along HEADERS, PARAMETERS,
+and DATA."
   (when *bd-jira-config/config*
     (cl-destructuring-bind (&key domain token user &allow-other-keys)
 	*bd-jira-config/config*
       (let ((auth-string (base64-encode-string (format "%s:%s" user token) t)))
 	(push (cons "Authorization" (format "Basic %s" auth-string)) headers))
-      (let ((request-type (or type "GET")))
+      (let ((rest-method (or rest-method "GET"))
+	    (url (cond ((eq jira-segment :standard)
+			(format "https://%s/rest/api/2/%s" domain path))
+		       ((eq jira-segment :agile)
+			(format "https://%s/rest/agile/1.0/%s" domain path))
+		       (t
+			(format "https://%s/rest/api/2/%s" domain path)))))
 	(request-response-data
-	 (request
-	     (format "https://%s/rest/api/2/%s" domain path)
-	     :type request-type
+	 (request url
+	     :type rest-method
 	     :sync t
 	     :parser 'json-read
 	     :headers headers
 	     :data data
 	     :params parameters))))))
 
-;;(defvar *metadata*
-;;  (bd-jira-request/get
-;;   "issue/createmeta/XDR/issuetypes"
-;;   :headers
-;;   '(("Content-Type" . "application/json")
-;;     ("Accept" . "application/json"))))
-;;
-;;(mapcar (lambda (type) (alist-get 'name type)) (alist-get 'issueTypes *metadata*))
+(cl-defun bd-jira-request (path &key type headers parameters data)
+  "Make a get request for PATH to JIRAs standard API.
+Optionally specify REST-METHOD - the default is GET.
+Optionally specify HEADERS, PARAMETERS or DATA."
+  (bd-jira-request--request :standard path type headers parameters data))
 
-;;(bd-jira-request
-;; "issue"
-;; :type "POST"
-;; :headers (list (cons "Content-Type" "application/json")
-;;		(cons "Accept" "application/json"))
-;; :data
-;; (json-encode
-;;  (list (cons 'fields (list
-;;		       (cons 'project (list (cons 'key "XDR")))
-;;		       (cons 'components
-;;			     (list (list (cons 'name "Engine"))))
-;;		       (cons 'description "In January a lot of data that didn't belong to XDR was dumped into the PROD Conure database. A script has been worked out to delete the data: https://github.com:advthreat/preen. When we have a way of performing bulk cleaning operations on the Conure database, we can execute that script.")
-;;		       (cons 'summary "Clean Non-XDR data from Conure")
-;;		       (cons 'issuetype (list (cons 'name "Task")))
-;;		       (cons 'parent (list (cons 'key "XDR-3067"))))))))
-
+(cl-defun bd-jira-agile-request (path &key type headers parameters data)
+  "Make a get request for PATH to JIRAs agile API.
+Optionally specify TYPE - the default is GET.
+Optionally specify HEADERS, PARAMETERS or DATA."
+  (bd-jira-request--request :agile path type headers parameters data))
 
 (provide 'bd-jira-request)
 ;;; bd-jira-request.el ends here

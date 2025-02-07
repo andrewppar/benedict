@@ -81,8 +81,12 @@
 	 (bd-jira-issue/assign issue-key (car values)))
 	((equal field :parent)
 	 (bd-jira-issue/add-parent issue-key (car values)))
-	(t (message (format "Cannot update %s with unrecognized field %s"
-			    issue-key field)))))
+	((equal field :sprint)
+	 (bd-jira-sprint/add-issue issue-key (car values)))
+	(t
+	 (message
+	  (format "Cannot update %s with unrecognized field %s"
+		  issue-key field)))))
 
 ;;;;;;;
 ;;; Git
