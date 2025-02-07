@@ -34,6 +34,7 @@
 ;;;;;;;
 ;; JIRA
 (require 'bd-jira-issue)
+(require 'bd-jira-board)
 
 ;;;###autoload
 (defun benedict/list-issues ()
