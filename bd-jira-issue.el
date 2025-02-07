@@ -482,7 +482,7 @@ Potentially coloring cells with COLUMN->COLOR-FN."
 		 :headers '(("Content-Type" . "application/json")
 			    ("Accept" . "application/json"))
 		 :data (json-encode (list (cons 'fields fields)))))
-	  (message result))))
+	  (message (format "created issue: %s" (alist-get 'key result))))))
     ;; Kill the buffer
     (kill-buffer nil)))
 
