@@ -30,28 +30,38 @@
     (when name (push (cons 'name name) parameters))
     (bd-jira-agile-request "board" :parameters parameters)))
 
+(defun bd-jira-board--fetch-jira-sprints (board-ids)
+  (mapcan
+   (lambda (board-id)
+     (let ((path (format "board/%s/sprint" board-id)))
+       (alist-get 'values (bd-jira-agile-request path))))
+   board-ids))
+
+(defun bd-jira-board--->sprint (jira-sprint-spec)
+  (let ((id (alist-get 'id jira-sprint-spec))
+	(name (alist-get 'name jira-sprint-spec)))
+    (list :id id :name name)))
+
 (defun bd-jira-board/active-sprints (board-ids)
   "Fetch any active sprints for BOARD-IDS"
   (thread-last
-    board-ids
-    (mapcan
-     (lambda (board-id)
-       (let ((path (format "board/%s/sprint" board-id)))
-	 (alist-get 'values (bd-jira-agile-request path)))))
-    (seq-filter
-     (lambda (sprint)
-       (equal (alist-get 'state sprint) "active")))
-    (mapcar
-     (lambda (sprint)
-       (let ((id (alist-get 'id sprint))
-	     (name (alist-get 'name sprint)))
-	 (list :id id :name name))))))
+    (bd-jira-board--fetch-jira-sprints board-ids)
+    (seq-filter (lambda (sprint) (equal (alist-get 'state sprint) "active")))
+    (mapcar #'bd-jira-board--->sprint)))
+
+(defun bd-jira-board/sprints (board-ids)
+  "Fetch any sprints for BOARD-IDS"
+  (thread-last
+    (bd-jira-board--fetch-jira-sprints board-ids)
+    (mapcar #'bd-jira-board--->sprint)))
 
 (defun bd-jira-sprint/add-issue (issue sprint)
   "Add ISSUES to SPRINT."
   (bd-jira-agile-request
    (format "sprint/%s/issue" sprint)
    :type "POST"
+   :headers '(("Accept" . "application/json")
+	      ("Content-Type" . "application/json"))
    :data (json-encode (list (cons 'issues (list issue))))))
 
 (provide 'bd-jira-board)
