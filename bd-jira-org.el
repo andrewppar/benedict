@@ -362,7 +362,7 @@ Optionally also specify a JIRA COMPONENT."
   (interactive)
   (benedict/init!)
   (let* ((key (bd-jira-org--key-at-point))
-	 (sprints (bd-jira-board/active-sprints bd-jira-org/board-ids))
+	 (sprints (bd-jira-board/sprints bd-jira-org/board-ids))
 	 (selected-sprint (completing-read
 			  "sprint: "
 			  (mapcar
