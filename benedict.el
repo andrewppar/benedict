@@ -51,8 +51,19 @@
   (benedict/init!)
   (bd-jira-issue/display-issues
    (bd-jira-issue/get-issues-from-query
+    ;; todo: this needs to be abstracted some more
     (format "project = XDRRESP and component = Engine and text ~ \"%s\""
 	    query-text))))
+
+;;;###autoload
+(defun benedict/sprint (sprint-id)
+  "Show all issues in a sprint."
+  (interactive)
+  (benedict/init!)
+  (bd-jira-issue/display-issues
+   (bd-jira-issue--parse-issue-response
+    (bd-jira-sprint/issues sprint-id))))
+
 
 ;;;###autoload
 (defun benedict/issue-detail (issue-key)

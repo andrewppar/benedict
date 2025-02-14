@@ -55,6 +55,14 @@
     (bd-jira-board--fetch-jira-sprints board-ids)
     (mapcar #'bd-jira-board--->sprint)))
 
+(defun bd-jira-sprint/issues (sprint)
+  "Fetch any issues in SPRINT."
+  (bd-jira-agile-request
+   (format "sprint/%s/issue" sprint)
+   :headers '(("Accept" . "application/json")
+	      ("Content-Type" . "application/json"))
+   :parameters (list (cons 'maxResults 400))))
+
 (defun bd-jira-sprint/add-issue (issue sprint)
   "Add ISSUES to SPRINT."
   (bd-jira-agile-request
