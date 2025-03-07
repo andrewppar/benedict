@@ -12,7 +12,7 @@
 
 ;;; Commentary:
 
-;; View, Create, Edit, and Delete Issues
+;; Create, Edit, and Delete Issues
 
 ;;; Code:
 (require 'bd-jira-request)
@@ -212,213 +212,18 @@
     :headers '(("Accept" . "application/json")
 	       ("Content-Type" . "application/json"))
     :parameters (list (cons "jql" jql-query)
-		      (cons "maxResults" "500")
+		      (cons 'maxResults 500)
 		      (cons 'fields "*all")))))
-
 
 (defun bd-jira-issue/get-issues-by-reporter (reporter)
   "Get JIRA issues reported by REPORTER."
   (bd-jira-issue/get-issues-from-query
    (format "reporter = %s" (bd-jira-user/id reporter))))
 
-;;;;;;;;;
-;;; View
-
-(define-minor-mode bd-jira-issue--view-mode
-    "Minor mode for viewing github items."
-  :init-value nil)
-(evil-define-minor-mode-key 'normal
-    'bd-jira-issue--view-mode
-  "q"  (lambda () (interactive) (kill-buffer nil)))
-
-(defmacro bd-jira-issue--with-view-buffer (&rest body)
-  "Execute BODY within the jira-issue-list buffer."
-  `(progn
-     (switch-to-buffer "*jira-issue-list*")
-     (read-only-mode -1)
-     (bd-jira-issue--view-mode 1)
-     (kill-region (point-min) (point-max))
-     (progn ,@body)
-     (read-only-mode 1)
-     (goto-char (point-min))))
-
-(defun bd-jira-issue--get-column-max
-    (column rows)
-  "Get the max char length of COLUMN in ROWS."
-  (let ((result (- (length (format "%s" column)) 1)))
-    (dolist (row rows)
-      (let ((row-result (length (plist-get row column))))
-	(when (> row-result result)
-	  (setq result row-result))))
-    (+ result 1)))
-
-(defun bd-jira-issue--display-table
-    (columns table &optional column->transform-fn column->color-fn)
-  "Display COLUMNS of TABLE.
-Potentially transforming cells with COLUMN->TRANSFORM-FN.
-Potentially coloring cells with COLUMN->COLOR-FN."
-  (bd-jira-issue--with-view-buffer
-   (let ((column->size '())
-	 (rows '()))
-     (delete-region (point-min) (point-max))
-     (dolist (row table)
-       (let ((new-row '()))
-	 (dolist (column columns)
-	   (let* ((cell-fn (alist-get column column->transform-fn #'identity))
-		  (cell-content (funcall cell-fn (plist-get row column))))
-	     (setq new-row (plist-put new-row column cell-content))))
-	 (push new-row rows)))
-     (dolist (column columns)
-       (let* ((column-max (bd-jira-issue--get-column-max column rows))
-	      (column-name (substring (format "%s" column) 1))
-	      (padding (- column-max (length column-name))))
-	 (insert (format "%s%s" column-name (make-string padding ? )
-			 (push (cons column column-max) column->size)))))
-     (insert "\n")
-     (insert (format "%s\n" (make-string (apply #'+ (mapcar #'cdr column->size)) ?=)))
-     (dolist (row rows)
-       (dolist (column columns)
-	 (let* ((cell-content (plist-get row column))
-		(color-fn (alist-get column column->color-fn))
-		(color (when color-fn (funcall color-fn cell-content)))
-		(padding (- (alist-get column column->size) (length cell-content)))
-		(cell-string (format "%s%s" cell-content (make-string padding ? )))
-		(cell (if color
-			  (propertize cell-string 'face `(:foreground ,color))
-			cell-string)))
-	   (insert cell)))
-       (insert "\n")))))
-
-(defun bd-jira-issue--status-color (status)
-  "Return a color for a jira STATUS."
-  (cond ((equal status "Selected for Development") "green")
-	((equal status "Done") "red")
-	((equal status "In Progress") "orange")
-	((equal status "Backlog") "grey")
-	((equal status "Ready for QA") "green")
-	(t "cyan")))
-
-(defun bd-jira-issue--truncate (string &optional width)
-  "Truncate STRING to WIDTH - the default value is 30 chars."
-  (let ((max-size (or width 100)))
-    (if (> (length string) max-size)
-	(format "%s..." (substring string 0 (- max-size 3)))
-      string)))
-
-(defun bd-jira-issue--list-position (item list)
-  "Find position of ITEM in LIST."
-  (let ((idx 0)
-	(found? nil)
-	(idx-end (length list)))
-    (while (and (not found?) (< idx idx-end))
-      (when (equal item (nth idx list))
-	(setq found? t))
-      (when (not found?)
-	(setq idx (+ idx 1))))
-    (if found? idx -1)))
-
-(defun bd-status<= (issue-one issue-two)
-  "Check whether the status of ISSUE-ONE is less than ISSUE-TWO."
-  (let ((status-one-idx (bd-jira-issue--list-position
-			 (plist-get issue-one :status)
-			 *bd-jira-issue/statuses*))
-	(status-two-idx (bd-jira-issue--list-position
-			 (plist-get issue-two :status)
-			 *bd-jira-issue/statuses*)))
-    (<= status-one-idx status-two-idx)))
-
-(defun bd-jira-issue/display-issues (issues)
-  "Show ISSUES in a dedicated buffer."
-  (let ((columns '(:key :status :summary :assignee :reporter)))
-    (bd-jira-issue--display-table
-     columns issues
-     '((:summary . bd-jira-issue--truncate))
-     '((:status . bd-jira-issue--status-color)
-       (:key . (lambda (x) "yellow"))))))
-
-(defun bd-jira-issue--colorize (text color)
-  (propertize text 'face `(:foreground ,color)))
-
-(defun bd-jira-issue--sprints-string (sprints-data)
-  "Display sprints in a human readable way."
-  (if sprints-data
-      (string-join
-       (mapcar
-	(lambda (sprint)
-	  (cl-destructuring-bind (&key name state &allow-other-keys) sprint
-	    (let ((color (cond ((equal state "active") "green")
-			       ((equal state "future") "light blue")
-			       ((equal state "closed") "orange"))))
-	      (bd-jira-issue--colorize name color))))
-	sprints-data)
-       ", ")
-    "None"))
-
-(defun bd-jira-issue--priority-string (priority)
-  (if-let ((color (cond
-		    ((equal priority "Lowest") "light blue")
-		    ((equal priority "Low") "cyan")
-		    ((equal priority "Medium") "yellow")
-		    ((equal priority "High") "orange")
-		    ((equal priority "Highest") "red"))))
-      (bd-jira-issue--colorize priority color)
-    priority))
-
-(defun bd-jira-issue/display-issue-detail (issue)
-  (cl-destructuring-bind (&key
-			  sprints key parent assignee reporter
-			  type summary comments priority status
-			  description &allow-other-keys)
-      issue
-    (bd-jira-issue--with-view-buffer
-     (delete-region (point-min) (point-max))
-     (let* ((key-string (if (or (not parent) (equal parent ""))
-			    (bd-jira-issue--colorize key "yellow")
-			  (format "%s/%s"
-				  (bd-jira-issue--colorize parent "orange")
-				  (bd-jira-issue--colorize key "yellow"))))
-	    (title-string
-	     (format "%s %s: %s"
-		     (bd-jira-issue--colorize type "cyan")
-		     key-string
-		     summary))
-	    (separator (make-string (length title-string) ?=))
-	    (result
-	     (list
-	      title-string
-	      separator
-	      (format "Status: %s" (bd-jira-issue--colorize
-				    status (bd-jira-issue--status-color status)))
-	      (format "Priority: %s" (bd-jira-issue--priority-string priority))
-	      (format "Assigned To: %s" assignee)
-	      (format "Created By: %s" reporter)
-	      (format "Sprints: %s" (bd-jira-issue--sprints-string sprints))
-	      ""
-	      (bd-jira-issue--colorize "Description:" "yellow")
-	      "------------"
-	      ""
-	      description
-	      "")))
-       (when comments
-	 (let ((comment-title (bd-jira-issue--colorize "Comments:" "yellow"))
-	       (comment-sep (bd-jira-issue--colorize
-			     (make-string (length title-string) ?-) "yellow")))
-	   (setq result
-		 (reverse (cons "" (cons "---------" (cons comment-title (reverse result))))))
-	   (dolist (comment comments)
-	     (cl-destructuring-bind (&key comment author created &allow-other-keys)
-		 comment
-	       (let ((comment-string (string-join
-				      (list comment "" (format "%s on %s" author created) "" comment-sep "")
-				      "\n")))
-		 (setq result (reverse (cons comment-string (reverse result)))))))))
-       (insert (string-join result "\n"))))))
-
 (defun benedict-jira-issue/list (&optional query)
   "Show current list of issues in a buffer with optional jql QUERY."
-  (let* ((jql (or query ""))
-	 (issues (sort (bd-jira-issue/get-issues-from-query jql) #'bd-status<=)))
-    (bd-jira-issue/display-issues issues)))
+  (let ((jql (or query "")))
+    (sort (bd-jira-issue/get-issues-from-query jql) #'bd-status<=)))
 
 (defun benedict-jira-issue/detail (issue-key)
   "Display the details of ISSUE-KEY."

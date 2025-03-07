@@ -35,21 +35,21 @@
 ;; JIRA
 (require 'bd-jira-issue)
 (require 'bd-jira-board)
+(require 'bd-jira-view)
 
 ;;;###autoload
-(defun benedict/list-issues ()
+(defun benedict/list-issues (query)
   "Display all active Engine issues in another buffer."
-  (interactive)
+  (interactive "sJQL Query: ")
   (benedict/init!)
-  (benedict-jira-issue/list
-   "project = XDRRESP and component = Engine and status != Done"))
+  (bd-jira-view/issues (benedict-jira-issue/list query)))
 
 ;;;###autoload
 (defun benedict/issue-search (query-text)
   "Get JIRA issues satisfying QUERY-TEXT."
   (interactive "sSearch Text: ")
   (benedict/init!)
-  (bd-jira-issue/display-issues
+  (bd-jira-view/issues
    (bd-jira-issue/get-issues-from-query
     ;; todo: this needs to be abstracted some more
     (format "project = XDRRESP and component = Engine and text ~ \"%s\""
@@ -60,18 +60,16 @@
   "Show all issues in a sprint."
   (interactive)
   (benedict/init!)
-  (bd-jira-issue/display-issues
+  (bd-jira-view/issues
    (bd-jira-issue--parse-issue-response
     (bd-jira-sprint/issues sprint-id))))
-
 
 ;;;###autoload
 (defun benedict/issue-detail (issue-key)
   "Get details for ISSUE-KEY as plist."
   (interactive "sIssue Key: ")
   (benedict/init!)
-  (bd-jira-issue/display-issue-detail
-   (benedict-jira-issue/detail issue-key)))
+  (benedict-jira-view/issue-detail issue-key))
 
 ;;;###autoload
 (defun benedict/issue-create ()

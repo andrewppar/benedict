@@ -31,8 +31,9 @@
     split-string
     (mapcar #'downcase)
     ((lambda (strings) (string-join strings "-")))
+    (replace-regexp-in-string (regexp-quote "?") "")
     (replace-regexp-in-string "\\[" "")
-     (replace-regexp-in-string "\\]" "")
+    (replace-regexp-in-string "\\]" "")
     (replace-regexp-in-string "," "")
     (replace-regexp-in-string "\\." "")
     (replace-regexp-in-string "'" "")
