@@ -293,11 +293,9 @@
 
 (define-minor-mode benedict-jira-issue--create-mode
     "Minor mode for cerat github items."
-  :init-value nil)
-(evil-define-minor-mode-key 'normal
-    'benedict-jira-issue--create-mode
-  (kbd "C-c C-c") 'bd-jira-issue--create-issue
-  "q" (lambda () (interactive) (kill-buffer nil)))
+  :init-value nil
+  :keymap
+  (list (cons (kbd "C-c C-c") #'bd-jira-issue--create-issue)))
 
 (defconst *benedict-jira-create-issue-buffer* "*benedict-create-jira-issue*")
 
