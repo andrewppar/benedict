@@ -395,6 +395,18 @@
 				      (list (cons 'name relation))))))
     (message (format "%s is not a valid link type" relation))))
 
+(defun bd-jira-issue/update-description (issue-key description)
+  "Update the description field of ISSUE-KEY to DESCRIPTION."
+  (bd-jira-request
+   (format "issue/%s" issue-key)
+   :type "PUT"
+   :headers '(("Content-Type" . "application/json")
+	      ("Accept" . "application/json"))
+   :data (json-encode (list (cons "fields"
+				  (list
+				   (cons "description" description)))))))
+
+
 (defun bd-jira-issue/add-comment (issue-key comment)
   "Add COMMENT to issue with ISSUE-KEY."
   (bd-jira-request

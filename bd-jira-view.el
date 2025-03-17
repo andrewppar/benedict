@@ -109,7 +109,9 @@
 	 (to-send (buffer-substring-no-properties (point-min) (point-max)))
 	 (key (plist-get bd-jira-view--input-data :key)))
     (cl-case (plist-get bd-jira-view--input-data :operation)
-      (:comment (bd-jira-issue/add-comment key to-send)))
+      (:comment (bd-jira-issue/add-comment key to-send))
+      (:update-description (bd-jira-issue/update-description
+			    key (bd-jira-view--org->jira-md to-send))))
     (set-window-configuration bd-jira-view--saved-layout)
     (setq bd-jira-view--saved-layout nil)
     (sleep-for 4)
@@ -166,6 +168,15 @@
 		 (string-replace "`" "'" string))
 		executable))))))
 
+(defun bd-jira-view--org->jira-md (string)
+  "Use pandoc to convert STRING to jira-md."
+  (let ((executable (string-trim (shell-command-to-string "which pandoc"))))
+    (if (equal executable "")
+	(bd-jira-view--quote string)
+      (bd-jira-view--quote
+       (shell-command-to-string
+	(format "echo \"%s\" | %s -f jira -t org" string executable))))))
+
 ;;view
 
 (defun bd-jira-view--snoc (item lista)
@@ -215,19 +226,33 @@
    (benedict-jira-issue/detail issue-key)))
 
 ;; edit
-(defun bd-jira-view--get-input ()
-  "Generate a new buffer to get input."
+(defun bd-jira-view--get-input (&optional initial-input)
+  "Generate a new buffer to get input.
+Optionally pass INITIAL-INPUT to populate the buffer."
   (setq bd-jira-view--saved-layout (current-window-configuration))
   (select-window (split-window-below nil (frame-root-window)))
   (switch-to-buffer bd-jira-view--input-buffer)
   (delete-region (point-min) (point-max))
+  (when initial-input
+    (insert initial-input)
+    (goto-char (point-min)))
+  (when (member (plist-get bd-jira-view--input-data :operation) (list :update-description))
+    (org-mode))
   (bd-jira-view/input-mode 1))
 
 (defun bd-jira-view/add-comment ()
-  "add a comment to the current issue"
+  "Add a comment to the current issue."
   (interactive)
   (plist-put bd-jira-view--input-data :operation :comment)
   (bd-jira-view--get-input))
+
+(defun bd-jira-view/update-description ()
+  "Update the description of the current issue."
+  (interactive)
+  (plist-put bd-jira-view--input-data :operation :update-description)
+  (bd-jira-view--get-input
+   (bd-jira-view--jira-md->org
+    (plist-get bd-jira-view--input-data :description))))
 
 (defun bd-jira-view/update-status (status)
   "update the status of the current issue"
