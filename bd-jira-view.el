@@ -518,5 +518,15 @@ for viewing.")
        new-issues
        bd-jira-view--color-issues-spec))))
 
+(defun bd-jira-view/detail-at-point ()
+  "Create a new buffer with a detailed view of the issue at point."
+  (interactive)
+  (let ((line (thing-at-point 'line)))
+    (when (string-match "\\s-+[A-Z]+-[0-9]+\\s-+" line)
+      (benedict-jira-view/issue-detail
+       (string-trim (substring-no-properties (match-string 0 line)))))))
+
+
+
 (provide 'bd-jira-view)
 ;; bd-jira-view.el ends here
