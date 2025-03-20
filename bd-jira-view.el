@@ -313,12 +313,12 @@ Optionally pass INITIAL-INPUT to populate the buffer."
 
 
 (defun bd-jira-view/capture (org-file outline-path)
-  "Save the current issue to an ORG-FILE."
+  "Save the current issue to an ORG-FILE at OUTLINE-PATH."
   (let* ((key (plist-get bd-jira-view--input-data :key))
 	 (template (string-join
 		    (list
 		     "* TODO %?  %(org-set-tags \""
-		     key
+		     (string-replace "-" "_" key)
 		     "\")\nSCHEDULED: %^t\n %(bd-jira-view--capture-properties)")))
 	 (old-templates org-capture-templates))
     (setq org-capture-templates (list
