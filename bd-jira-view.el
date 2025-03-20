@@ -529,4 +529,4 @@ for viewing.")
 
 
 (provide 'bd-jira-view)
-;; bd-jira-view.el ends here
+;;; bd-jira-view.el ends here
