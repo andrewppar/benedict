@@ -347,7 +347,17 @@ Optionally pass INITIAL-INPUT to populate the buffer."
 
 (define-derived-mode bd-jira-view/issues-mode fundamental-mode
   "View JIRA issues"
-    "Major mode for viewing jira issues.")
+  "Major mode for viewing jira issues."
+  (define-key bd-jira-view/issues-mode-map
+      (kbd "C-c C-f") #'bd-jira-view/add-filter)
+  (define-key bd-jira-view/issues-mode-map
+      (kbd "C-c C-q") #'bd-jira-view/quit)
+  (define-key bd-jira-view/issues-mode-map
+      (kbd "C-c C-o") #'bd-jira-view/detail-at-point)
+  (define-key bd-jira-view/issues-mode-map
+      (kbd "C-c C-s") #'bd-jira-view/sort-by)
+  (define-key bd-jira-view/issues-mode-map
+      (kbd "C-c C-x") #'bd-jira-view/remove-filters))
 
 (defvar bd-jira-view--issues-data nil
   "A place to store information about issues as they get processed
