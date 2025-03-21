@@ -293,7 +293,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
 			     (not (equal (plist-get sprint :state) "closed")))
 			   (bd-jira-board/sprints bd-jira-org/board-ids))))
 	 (selected-sprint (completing-read "sprint: " sprints nil t))
-	 (sprint-id (alist-get sprints selected-sprint nil nil #'equal)))
+	 (sprint-id (alist-get selected-sprint sprints nil nil #'equal)))
     (benedict/issue-update key :sprint sprint-id)))
 
 (defun bd-jira-view--user-search ()
