@@ -38,9 +38,11 @@
    board-ids))
 
 (defun bd-jira-board--->sprint (jira-sprint-spec)
+  "Create a plist of JIRA-SPRINT-SPEC."
   (let ((id (alist-get 'id jira-sprint-spec))
-	(name (alist-get 'name jira-sprint-spec)))
-    (list :id id :name name)))
+	(name (alist-get 'name jira-sprint-spec))
+	(state (alist-get 'state jira-sprint-spec)))
+    (list :id id :name name :state state)))
 
 (defun bd-jira-board/active-sprints (board-ids)
   "Fetch any active sprints for BOARD-IDS"

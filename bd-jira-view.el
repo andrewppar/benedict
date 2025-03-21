@@ -16,19 +16,21 @@
 
 ;;; Code:
 (require 'bd-jira-issue)
+(require 'bd-jira-org)
+(require 'bd-jira-board)
 (require 'bd-jira-user)
 (require 'bd-jira-config)
-(require 'org)
 (require 'subr-x)
 
 ;;;;;;;;;;;;;;;;
 ;;; coloring
 
 (defun bd-jira-view--colorize (text color)
+  "Colorize TEXT with COLOR."
   (propertize text 'face `(:foreground ,color)))
 
 (defun bd-jira-view--type-color (type)
-  "Return a color for a jira STATUS."
+  "Return a color for a jira TYPE."
   (cond ((equal type "Epic") "cyan")
 	((equal type "Story") "green")
 	((equal type "Task") "grey")
@@ -45,16 +47,20 @@
 	((equal status "Ready for QA") "green")
 	(t "cyan")))
 
+(defun bd-jira-view--sprint-state-color (state)
+  "Generate a color for sprint STATE."
+  (cond ((equal state "active") "green")
+	((equal state "future") "light blue")
+	((equal state "closed") "orange")))
+
 (defun bd-jira-view--sprints-string (sprints-data)
-  "Display sprints in a human readable way."
+  "Display sprints from SPRINTS-DATA in a human readable way."
   (if sprints-data
       (string-join
        (mapcar
 	(lambda (sprint)
 	  (cl-destructuring-bind (&key name state &allow-other-keys) sprint
-	    (let ((color (cond ((equal state "active") "green")
-			       ((equal state "future") "light blue")
-			       ((equal state "closed") "orange"))))
+	    (let ((color (bd-jira-view--sprint-state-color state)))
 	      (bd-jira-view--colorize name color))))
 	sprints-data)
        ", ")
@@ -76,6 +82,7 @@
 (defvar bd-jira-view--saved-layout ())
 
 (defun bd-jira-view/insert-code-block (language)
+  "Insert a code block for LANGUAGE."
   (interactive "slanguage: ")
   (insert (string-join
 	   (list (format "{code:%s}" language)
@@ -84,6 +91,7 @@
 	   "\n")))
 
 (defun bd-jira-view--resolve-user (user-block)
+  "Resolve a user name from USER-BLOCK - unfinished."
   (let (id)
     (save-match-data
       (and (string-match "\\[~accountid:\\([0-9a-z:-]*\\)\\]" user-block)
@@ -91,6 +99,7 @@
     (alist-get 'emailAddress (bd-jira-user/from-id id))))
 
 (defun bd-jira-view/insert-code (code)
+  "Format CODE as code."
   (interactive "svalue: ")
   (insert (format "{{%s}}" code)))
 
@@ -119,7 +128,7 @@
     (benedict-jira-view/issue-detail key)))
 
 (defun bd-jira-view/refresh ()
-  "Refresh the current view"
+  "Refresh the current view."
   (interactive)
   (benedict-jira-view/issue-detail
    (plist-get bd-jira-view--input-data :key)))
@@ -134,7 +143,7 @@
 (define-derived-mode bd-jira-view/issue-mode org-mode "JIRA Issue")
 
 (defmacro bd-jira-view--with-issue-buffer (issue-key &rest body)
-  "Execute BODY within the BUFFER-NAME buffer."
+  "Execute BODY within the for ISSUE-KEY buffer."
   (declare (indent defun))
   `(progn
      (switch-to-buffer (format "*benedict issue: %s*" ,issue-key))
@@ -180,9 +189,11 @@
 ;;view
 
 (defun bd-jira-view--snoc (item lista)
+  "Add ITEM to end of LISTA."
   (reverse (cons item (reverse lista))))
 
 (defun bd-jira-view/display-issue-detail (issue)
+  "Draw a view of ISSUE in a new buffer."
   (cl-destructuring-bind (&key
 			  sprints key parent assignee reporter
 			  type summary comments priority status
@@ -220,7 +231,7 @@
 	(org-mode)))))
 
 (defun benedict-jira-view/issue-detail (issue-key)
-  "view an issue with benedicts viewer."
+  "View ISSUE-KEY with benedicts viewer."
   (interactive)
   (bd-jira-view/display-issue-detail
    (benedict-jira-issue/detail issue-key)))
@@ -255,7 +266,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
     (plist-get bd-jira-view--input-data :description))))
 
 (defun bd-jira-view/update-status (status)
-  "update the status of the current issue"
+  "Update the status of the current issue with STATUS."
   (interactive
    (list
     (completing-read "new status: "
@@ -265,22 +276,24 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   (let ((key (plist-get bd-jira-view--input-data :key)))
     (bd-jira-issue/update-status key status)))
 
+(defun bd-jira-view--sprint->id (sprint-spec)
+  "Convert SPRINT-SPEC into an alist entry of a formatted name to an id."
+  (cl-destructuring-bind (&key name state id &allow-other-keys) sprint-spec
+    (let ((state-string (bd-jira-view--colorize
+			 state (bd-jira-view--sprint-state-color state))))
+      (cons (format "%s: %s" state-string name) id))))
+
 (defun bd-jira-view/add-issue-to-sprint ()
-  "update the sprint on the current issue"
+  "Update the sprint on the current issue."
   (interactive)
   (let* ((key (plist-get bd-jira-view--input-data :key))
-	 (sprints (bd-jira-board/sprints bd-jira-org/board-ids))
-	 (selected-sprint (completing-read
-			   "sprint: "
-			   (mapcar
-			    (lambda (sprint) (plist-get sprint :name))
-			    sprints)
-			   nil t))
-	 (sprint-id (seq-some
-		     (lambda (sprint)
-		       (when (equal (plist-get sprint :name) selected-sprint)
-			 (plist-get sprint :id)))
-		     sprints)))
+	 (sprints (mapcar #'bd-jira-view--sprint->id
+			  (seq-filter
+			   (lambda (sprint)
+			     (not (equal (plist-get sprint :state) "closed")))
+			   (bd-jira-board/sprints bd-jira-org/board-ids))))
+	 (selected-sprint (completing-read "sprint: " sprints nil t))
+	 (sprint-id (alist-get sprints selected-sprint nil nil #'equal)))
     (benedict/issue-update key :sprint sprint-id)))
 
 (defun bd-jira-view--user-search ()
@@ -289,7 +302,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
 	 (account-id (alist-get 'accountId person))
 	 (name (alist-get 'displayName person))
 	 (email (alist-get 'emailAddress person)))
-    (when (y-or-n-p (format "Found %s (%s). Is this correct? " name email))
+    (when (y-or-n-p (format "Found %s (%s).  Is this correct? " name email))
       account-id)))
 
 
