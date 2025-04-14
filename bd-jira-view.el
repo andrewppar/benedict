@@ -120,7 +120,8 @@
     (cl-case (plist-get bd-jira-view--input-data :operation)
       (:comment (bd-jira-issue/add-comment key to-send))
       (:update-description (bd-jira-issue/update-description
-			    key (bd-jira-view--org->jira-md to-send))))
+			    key (bd-jira-view--org->jira-md to-send)))
+      (:add-label (bd-jira-issue/add-label key to-send)))
     (set-window-configuration bd-jira-view--saved-layout)
     (setq bd-jira-view--saved-layout nil)
     (sleep-for 4)
@@ -264,6 +265,13 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   (bd-jira-view--get-input
    (bd-jira-view--jira-md->org
     (plist-get bd-jira-view--input-data :description))))
+
+(defun bd-jira-view/add-label ()
+  "Add a label to the current issue."
+  (interactive)
+  (plist-put bd-jira-view--input-data :operation :add-label)
+  (bd-jira-view--get-input))
+
 
 (defun bd-jira-view/update-status (status)
   "Update the status of the current issue with STATUS."

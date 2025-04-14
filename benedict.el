@@ -90,6 +90,8 @@
 	 (bd-jira-issue/add-parent issue-key (car values)))
 	((equal field :sprint)
 	 (bd-jira-sprint/add-issue issue-key (car values)))
+	((equal field :label)
+	 (bd-jira-issue/add-label issue-key (car values)))
 	(t
 	 (message
 	  (format "Cannot update %s with unrecognized field %s"

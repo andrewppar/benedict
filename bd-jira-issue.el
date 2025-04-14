@@ -247,9 +247,10 @@
 	     (lines (split-string contents "\n"))
 	     (title (bd-jira-issue--parse-create-buffer-line (car lines)))
 	     (issue-type (bd-jira-issue--parse-create-buffer-line (cadr lines)))
-	     (parent (bd-jira-issue--parse-create-buffer-line (caddr lines)))
+	     (label (bd-jira-issue--parse-create-buffer-line (caddr lines)))
+	     (parent (bd-jira-issue--parse-create-buffer-line (cadddr lines)))
 	     (description (bd-jira-issue--parse-create-buffer-line
-			   (string-join (cdddr lines) "\n")))
+			   (string-join (cddddr lines) "\n")))
 	     (tmp-file (make-temp-file "benedict-issue-create")))
 	(save-window-excursion
 	  (let ((buffer (find-file tmp-file)))
@@ -259,6 +260,7 @@
 	(message (format "issue content saved to: %s" tmp-file))
 	(list :title title
 	      :issue-type issue-type
+	      :label label
 	      :parent parent
 	      :description description))
     (warn (format "Cannot parse create issue from buffer other than %s"
@@ -270,13 +272,15 @@
   (let ((result nil))
     (when-let ((issue-spec (bd-jira-issue--parse-create-buffer)))
       ;; Create the issue
-      (cl-destructuring-bind (&key title issue-type parent description &allow-other-keys)
+      (cl-destructuring-bind (&key title issue-type label parent description &allow-other-keys)
 	  issue-spec
 	(let ((fields (list
 		       '(project . ((key . "XDR")))
 		       '(components . (((name . "Engine"))))
 		       (cons 'description description)
 		       (cons 'summary title)
+		       ;; when we get multiple do a split on some delimiter char
+		       (cons 'labels (list label))
 		       (cons 'issuetype (list (cons 'name issue-type))))))
 	  (unless (equal (string-trim parent) "")
 	    (push (cons 'parent (list (cons 'key parent))) fields))
@@ -323,6 +327,7 @@
     (kill-region (point-min) (point-max))
     (insert "Title: \n")
     (insert (format "Issue Type: %s\n" issue-type))
+    (insert "Label: \n")
     (insert "Parent: \n")
     (insert "Description: \n\n")
     (cond
@@ -378,6 +383,20 @@
 		       :headers '(("Content-Type" . "application/json")
 				  ("Accept" . "application/json"))
 		       :data (json-encode (list (cons 'accountId account)))))))
+
+(defun bd-jira-issue/add-label (issue-key label)
+  "Add LABEL to issue with ISSUE-KEY."
+  (bd-jira-request
+   (format "issue/%s" issue-key)
+   :type "PUT"
+   :headers '(("Content-Type" . "application/json")
+	      ("Accept" . "application/json"))
+   :data (json-encode
+	  (list
+	   (cons 'update
+		 (list
+		  (cons 'labels
+			(list (list (cons 'add label))))))))))
 
 (defun bd-jira-issue/add-link (from-key relation to-key)
   "Link FROM-KEY to TO-KEY via RELATION."
