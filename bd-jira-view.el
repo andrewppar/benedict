@@ -330,7 +330,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   (let* ((key (plist-get bd-jira-view--input-data :key))
 	 (template (string-join
 		    (list
-		     "* TODO %?  %(org-set-tags \""
+		     "* %? TODO  %(org-set-tags \""
 		     (string-replace "-" "_" key)
 		     "\")\nSCHEDULED: %^t\n %(bd-jira-view--capture-properties)")))
 	 (old-templates org-capture-templates))

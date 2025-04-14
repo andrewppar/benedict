@@ -50,10 +50,7 @@
   (interactive "sSearch Text: ")
   (benedict/init!)
   (bd-jira-view/issues
-   (bd-jira-issue/get-issues-from-query
-    ;; todo: this needs to be abstracted some more
-    (format "project = XDRRESP and component = Engine and text ~ \"%s\""
-	    query-text))))
+   (bd-jira-issue/get-issues-from-query query-text)))
 
 ;;;###autoload
 (defun benedict/sprint (sprint-id)
