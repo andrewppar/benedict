@@ -52,10 +52,18 @@
     (mapcar #'bd-jira-board--->sprint)))
 
 (defun bd-jira-board/sprints (board-ids)
-  "Fetch any sprints for BOARD-IDS"
+  "Fetch any sprints for BOARD-IDS."
   (thread-last
     (bd-jira-board--fetch-jira-sprints board-ids)
     (mapcar #'bd-jira-board--->sprint)))
+
+(defun bd-jira-board/backlog (board-id)
+  "Fetch any backlog issues for BOARD-ID."
+  (bd-jira-agile-request
+   (format "board/%s/backlog" board-id)
+   :headers '(("Accept" . "application/json")
+	      ("Content-Type" . "application/json"))
+   :parameters (list (cons 'maxResults 400))))
 
 (defun bd-jira-sprint/issues (sprint)
   "Fetch any issues in SPRINT."

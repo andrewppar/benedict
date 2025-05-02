@@ -69,8 +69,8 @@
 (defun bd-jira-view--title-string (issue-key parent summary)
   "Compute the title string for ISSUE-TYPE ISSUE-KEY PARENT and SUMMARY."
   (let* ((parent? (and parent (not (equal parent ""))))
-	 (issue-string (bd-jira-view--colorize issue-key "yellow"))
-	 (parent-string (when parent? (bd-jira-view--colorize parent "orange")))
+	 (issue-string (bd-jira-view--format-issue-key issue-key))
+	 (parent-string (when parent? (bd-jira-view--format-issue-key parent)))
 	 (key-string (if parent? (format "%s/%s" parent-string issue-string) issue-string)))
     (format "#+title: %s: %s" key-string summary)))
 
@@ -178,6 +178,13 @@
 		 (string-replace "`" "'" string))
 		executable))))))
 
+(defun bd-jira-view--format-issue-key (issue-key)
+  "Format ISSUE-KEY.
+Make an org mode link if :domain is available in jira configuration."
+  (if-let ((domain (bd-jira-config/get :domain)))
+      (format "[[https://%s/browse/%s][%s]]" domain issue-key issue-key)
+    issue-key))
+
 (defun bd-jira-view--org->jira-md (string)
   "Use pandoc to convert STRING to jira-md."
   (let ((executable (string-trim (shell-command-to-string "which pandoc"))))
@@ -186,6 +193,20 @@
       (bd-jira-view--quote
        (shell-command-to-string
 	(format "echo \"%s\" | %s -f jira -t org" string executable))))))
+
+(defun bd-jira-view--format-related (related-issues)
+  "Format any issues in RELATED-ISSUES to be displayed."
+  (when related-issues
+    (let ((formatted-relations '()))
+      (dolist (relation-binding related-issues)
+	(let ((relation-name (format "- *%s*" (car relation-binding)))
+	      (relata (string-join
+		       (mapcar
+			#'bd-jira-view--format-issue-key
+			(cdr relation-binding))
+		       ",")))
+	  (push (format "%s %s" relation-name relata) formatted-relations)))
+      (string-join formatted-relations "\n"))))
 
 ;;view
 
@@ -198,7 +219,7 @@
   (cl-destructuring-bind (&key
 			  sprints key parent assignee reporter
 			  type summary comments priority status
-			  description &allow-other-keys)
+			  related description &allow-other-keys)
       issue
     (setq bd-jira-view--input-data issue)
     (bd-jira-view--with-issue-buffer key
@@ -213,6 +234,7 @@
 	       (format "- *priority* %s" priority)
 	       (format "- *assigned-to* %s" assignee)
 	       (format "- *sprints* %s" (bd-jira-view--sprints-string sprints))
+	       (if related (bd-jira-view--format-related related) "")
 	       ""
 	       "* description"
 	       (bd-jira-view--jira-md->org description))))
@@ -272,6 +294,14 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   (plist-put bd-jira-view--input-data :operation :add-label)
   (bd-jira-view--get-input))
 
+(defun bd-jira-view/add-link (relation relatum)
+  "Add a link from the current issue to RELATUM via RELATION."
+  (interactive
+   (list
+    (completing-read "relation: " *bd-jira-issue/link-types* nil t)
+    (read-string "relatum: ")))
+  (let ((issue-key (plist-get bd-jira-view--input-data :key)))
+    (bd-jira-issue/add-link issue-key relation relatum)))
 
 (defun bd-jira-view/update-status (status)
   "Update the status of the current issue with STATUS."
@@ -302,6 +332,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
 			   (bd-jira-board/sprints bd-jira-org/board-ids))))
 	 (selected-sprint (completing-read "sprint: " sprints nil t))
 	 (sprint-id (alist-get selected-sprint sprints nil nil #'equal)))
+    ;; this should be at a lower level of abstraction
     (benedict/issue-update key :sprint sprint-id)))
 
 (defun bd-jira-view--user-search ()
@@ -368,8 +399,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
       (kbd "C-c C-x") #'bd-jira-view/remove-filters))
 
 (defvar bd-jira-view--issues-data nil
-  "A place to store information about issues as they get processed
-for viewing.")
+  "A place to store data about issues.")
 
 (defmacro bd-jira-view--with-issues-buffer (data &rest body)
   "Execute BODY within the BUFFER-NAME buffer."
@@ -436,22 +466,21 @@ for viewing.")
 
 (defun bd-jira-view--view-issues-table
     (original-data columns rows &optional column->color-fn)
+  "Create a table for viewing ROWS that have COLUMNS and ORIGINAL-DATA."
   (bd-jira-view--with-issues-buffer original-data
       (insert (bd-jira-view--generate-table-string columns rows column->color-fn))))
 
 (defun bd-jira-view--truncate (string width)
-  "Truncate STRING to WIDTH"
+  "Truncate STRING to WIDTH."
   (if (> (length string) width)
       (format "%s..." (substring string 0 (- width 3)))
     string))
-
-(defun bd-jira-view--process-issues (issues filter-fn sort-fn)
-  (sort (filter filter-fn issues) sort-fn))
 
 (defvar bd-jira-view--issue-list-columns
   (list :type :key :status :summary :assignee :reporter))
 
 (defun bd-jira-view--process-issues (issues)
+  "Ensure that issue summaries in ISSUES is truncated."
   (mapcar
    (lambda (issue)
      (cl-destructuring-bind (&key summary &allow-other-keys)
@@ -466,15 +495,18 @@ for viewing.")
    :key (lambda (x) "yellow")))
 
 (defun bd-jira-view/issues (issues)
+  "View ISSUES as a table."
   (let ((columns bd-jira-view--issue-list-columns)
 	(rows (bd-jira-view--process-issues issues))
 	(metadata (list :original issues :current issues)))
     (bd-jira-view--view-issues-table metadata columns rows bd-jira-view--color-issues-spec)))
 
 (defun bd-jira-view--keyword->name (keyword)
+  "Get the name of KEYWORD."
   (substring (format "%s" keyword) 1))
 
 (defun bd-jira-view--column-name->column ()
+  "Create a map from column names to the keywords representing them."
   (mapcar
    (lambda (symbol)
      (cons (bd-jira-view--keyword->name symbol)
@@ -482,6 +514,7 @@ for viewing.")
    bd-jira-view--issue-list-columns))
 
 (defun bd-jira-view/add-filter ()
+  "Add a filter to the current view."
   (interactive)
   (cl-destructuring-bind (&key current original)
       bd-jira-view--issues-data
@@ -516,16 +549,18 @@ for viewing.")
        bd-jira-view--color-issues-spec))))
 
 (defun bd-jira-view/remove-filters ()
+  "Remove any filters from the current view."
   (interactive)
-(cl-destructuring-bind (&key original &allow-other-keys)
-    bd-jira-view--issues-data
-  (bd-jira-view--view-issues-table
-   (list :current original :original original)
-   bd-jira-view--issue-list-columns
-   original
-   bd-jira-view--color-issues-spec)))
+  (cl-destructuring-bind (&key original &allow-other-keys)
+      bd-jira-view--issues-data
+    (bd-jira-view--view-issues-table
+     (list :current original :original original)
+     bd-jira-view--issue-list-columns
+     original
+     bd-jira-view--color-issues-spec)))
 
 (defun bd-jira-view/sort-by ()
+  "Sort the current view."
   (interactive)
   (cl-destructuring-bind (&key current original)
       bd-jira-view--issues-data
@@ -556,8 +591,6 @@ for viewing.")
     (when (string-match "\\s-+[A-Z]+-[0-9]+\\s-+" line)
       (benedict-jira-view/issue-detail
        (string-trim (substring-no-properties (match-string 0 line)))))))
-
-
 
 (provide 'bd-jira-view)
 ;;; bd-jira-view.el ends here
