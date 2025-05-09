@@ -452,8 +452,6 @@
   "Remove PARENT-KEY as a parent from issue with ISSUE-KEY."
   (bd-jira-issue/add-parent issue-key nil))
 
-(defun bd-jira-issue/add-related (
-
 (defun bd-jira-issue/add-sprint (issue-key sprint-name))
 
 (provide 'bd-jira-issue)
