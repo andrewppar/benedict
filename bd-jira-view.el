@@ -357,21 +357,15 @@ Optionally pass INITIAL-INPUT to populate the buffer."
     (when assignee
       (bd-jira-issue/assign key assignee))))
 
-(defun bd-jira-view--capture-properties ()
-  (interactive)
-  (let ((result (with-output-to-string
-		  (org-priority))))
-    "%^t %^{EFFORT}p"))
-
-
 (defun bd-jira-view/capture (org-file outline-path)
-  "Save the current issue to an ORG-FILE at OUTLINE-PATH."
+  "Save the current issue to an ORG-FILE at OUTLINE-PATH.
+Sets the default priority to A."
   (let* ((key (plist-get bd-jira-view--input-data :key))
 	 (template (string-join
 		    (list
-		     "* %? TODO  %(org-set-tags \""
+		     "* TODO [#A] %? %(org-set-tags \""
 		     (string-replace "-" "_" key)
-		     "\")\nSCHEDULED: %^t\n %(bd-jira-view--capture-properties)")))
+		     "\")\nSCHEDULED: %^t %^{EFFORT}p")))
 	 (old-templates org-capture-templates))
     (setq org-capture-templates (list
 				 `("c" "JIRA Capture" entry
