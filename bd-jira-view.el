@@ -381,6 +381,14 @@ Optionally pass INITIAL-INPUT to populate the buffer."
 	 (org-capture nil "c")
       (setq org-capture-templates old-templates))))
 
+(defun bd-jira-view/follow-link ()
+  "Follow a jira link at point."
+  (interactive)
+  (let ((word (current-word)))
+    (when (string-match "[A-Z]+-[0-9]+" word)
+      (benedict-jira-view/issue-detail
+       (string-trim (substring-no-properties (match-string 0 word)))))))
+
       ;;;
 ;;;;;;;;;
 
@@ -402,7 +410,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   "A place to store data about issues.")
 
 (defmacro bd-jira-view--with-issues-buffer (data &rest body)
-  "Execute BODY within the BUFFER-NAME buffer."
+  "Execute BODY within the DATA stored in bd-jira-view--issues-data."
   (declare (indent defun))
   `(progn
      (switch-to-buffer "*benedict issues view*")
@@ -432,12 +440,14 @@ Optionally pass INITIAL-INPUT to populate the buffer."
     result))
 
 (defun bd-jira-view--padding (column->max-size column value)
+  "Generate padding for COLUMN with VALUE based on COLUMN->MAX-SIZE."
   (let ((current-size (length value))
 	(max-size (plist-get column->max-size column)))
     (make-string (+ (- max-size current-size) 1) ? )))
 
 (defun bd-jira-view--generate-table-string
     (columns rows column->color-fn)
+  "Genereate the table for COLUMNS and ROWS, with COLUMN->COLOR-FN."
   (let ((column->size (bd-jira-view--column->max columns rows))
 	(header "")
 	(body  '()))
