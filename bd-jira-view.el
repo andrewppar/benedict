@@ -363,7 +363,7 @@ Sets the default priority to A."
   (let* ((key (plist-get bd-jira-view--input-data :key))
 	 (template (string-join
 		    (list
-		     "* TODO [#A] %? %(org-set-tags \""
+		     "* todo [#A] %? %(org-set-tags \""
 		     (string-replace "-" "_" key)
 		     "\")\nSCHEDULED: %^t %^{EFFORT}p")))
 	 (old-templates org-capture-templates))

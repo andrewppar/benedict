@@ -377,4 +377,4 @@ Optionally also specify a JIRA COMPONENT."
     (benedict/issue-update key :sprint sprint-id)))
 
 (provide 'bd-jira-org)
-;;bd-jira-org.el ends here
+;;; bd-jira-org.el ends here
