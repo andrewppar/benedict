@@ -218,8 +218,8 @@ Make an org mode link if :domain is available in jira configuration."
   "Draw a view of ISSUE in a new buffer."
   (cl-destructuring-bind (&key
 			  sprints key parent assignee reporter
-			  type summary comments priority status
-			  related description &allow-other-keys)
+			  labels type summary comments priority
+			  status related description &allow-other-keys)
       issue
     (setq bd-jira-view--input-data issue)
     (bd-jira-view--with-issue-buffer key
@@ -232,6 +232,7 @@ Make an org mode link if :domain is available in jira configuration."
 	       (format "- *type* %s" type)
 	       (format "- *status* %s" status)
 	       (format "- *priority* %s" priority)
+	       (format "- *labels* %s" (string-join labels ", "))
 	       (format "- *assigned-to* %s" assignee)
 	       (format "- *sprints* %s" (bd-jira-view--sprints-string sprints))
 	       (if related (bd-jira-view--format-related related) "")

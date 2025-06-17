@@ -165,6 +165,7 @@
 	 (parent (alist-get 'key (alist-get 'parent fields) ""))
 	 (assignee (alist-get 'displayName (alist-get 'assignee fields) ""))
 	 (reporter (alist-get 'displayName (alist-get 'reporter fields) ""))
+	 (labels (append (alist-get 'labels fields []) nil))
 	 (issue-type (alist-get 'name (alist-get 'issuetype fields) ""))
 	 (summary (alist-get 'summary fields ""))
 	 (description (alist-get 'description fields ""))
@@ -173,10 +174,12 @@
 	 (comments (bd-jira-issue--parse-comments fields))
 	 (related-issues (bd-jira-issue--parse-relations fields))
 	 (status (alist-get 'name (alist-get 'status fields) ""))
+
 	 (result (list :key key
 		       :parent parent
 		       :assignee assignee
 		       :reporter reporter
+		       :labels labels
 		       :type issue-type
 		       :summary summary
 		       :description description
