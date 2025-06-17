@@ -67,25 +67,14 @@
     "Done"))
 
 (defconst *bd-jira-issue/link-types*
-  ;;(thread-last
-  ;;  (bd-jira-request "issueLinkType"
-  ;;		     :headers '(("Content-Type" . "application/json")
-  ;;				("Accept" . "application/json")))
-  ;;  (alist-get 'issueLinkTypes)
-  ;;  (mapcar
-  ;;   (lambda (link-type) (alist-get 'name link-type))))
-  '("Blockers" "Blocks"
-    "Bonfire Testing"
-    "Cloners"
-    "Defect"
-    "Dependency"
-    "Developer Escalations"
-    "Duplicate"
-    "Issue split"
-    "Post-Incident Reviews"
-    "Problem/Incident"
-    "Related" "Relates"
-    "Test" "Test (migrated)"))
+  (thread-last
+    (bd-jira-request "issueLinkType"
+  		     :headers '(("Content-Type" . "application/json")
+  				("Accept" . "application/json")))
+    (alist-get 'issueLinkTypes)
+    (mapcar
+     (lambda (link-type) (alist-get 'name link-type)))))
+
 
 ;;; Custom Deserialization
 ;; Example set this const whereever with whatever values
