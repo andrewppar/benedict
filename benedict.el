@@ -97,22 +97,6 @@
 	  (format "Cannot update %s with unrecognized field %s"
 		  issue-key field)))))
 
-;;;;;;;
-;;; Git
-
-(require 'bd-github-branch)
-
-;;;###autoload
-(defun benedict/spinoff-branch ()
-  "Spinoff a branch prompting for an issue or finding one at point."
-  (interactive)
-  (benedict/init!)
-  (let ((issue-key nil))
-    (when (string-equal major-mode "org-mode")
-      (setq issue-key (org-entry-get nil "ID" 'select)))
-    (unless issue-key
-      (setq issue-key (read-string "issue: ")))
-    (bd-github-branch/spinoff-from-key issue-key)))
 
 (provide 'benedict)
 ;;; benedict.el ends here
