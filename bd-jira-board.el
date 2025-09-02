@@ -74,13 +74,26 @@
    :parameters (list (cons 'maxResults 400))))
 
 (defun bd-jira-sprint/add-issue (issue sprint)
-  "Add ISSUES to SPRINT."
+  "Add ISSUE to SPRINT."
   (bd-jira-agile-request
    (format "sprint/%s/issue" sprint)
    :type "POST"
    :headers '(("Accept" . "application/json")
 	      ("Content-Type" . "application/json"))
    :data (json-encode (list (cons 'issues (list issue))))))
+
+(cl-defun bd-jira-board/issues (board &key assignee)
+  "Retrieve issues from the specified Jira BOARD.
+BOARD should be a board ID (numeric string or number).
+Returns up to 400 issues from the board."
+  (let ((headers (list (cons "Accept"  "application/json")
+		       (cons "Content-Type"  "application/json"))))
+    (when assignee
+      (push (cons "jql" (format "accountId=%s" assignee)) headers))
+    (bd-jira-agile-request
+     (format "board/%s/issue" board)
+     :headers headers
+     :parameters (list (cons 'maxResults 400)))))
 
 (provide 'bd-jira-board)
 ;;; bd-jira-board.el ends here

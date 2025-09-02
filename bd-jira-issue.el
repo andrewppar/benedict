@@ -18,6 +18,8 @@
 (require 'bd-jira-request)
 (require 'bd-jira-user)
 (require 'bd-jira-config)
+(require 'cl-lib)
+(require 'markdown-mode)
 
 ;;;;;;;;;;;;;
 ;;; Serialize
@@ -237,12 +239,14 @@
   (if (equal (buffer-name (current-buffer)) *benedict-jira-create-issue-buffer*)
       (let* ((contents (buffer-substring-no-properties (point-min) (point-max)))
 	     (lines (split-string contents "\n"))
-	     (title (bd-jira-issue--parse-create-buffer-line (car lines)))
-	     (issue-type (bd-jira-issue--parse-create-buffer-line (cadr lines)))
-	     (label (bd-jira-issue--parse-create-buffer-line (caddr lines)))
-	     (parent (bd-jira-issue--parse-create-buffer-line (cadddr lines)))
+	     (title (bd-jira-issue--parse-create-buffer-line (nth 0 lines)))
+	     (issue-type (bd-jira-issue--parse-create-buffer-line (nth 1 lines)))
+	     (label (bd-jira-issue--parse-create-buffer-line (nth 2 lines)))
+	     (parent (bd-jira-issue--parse-create-buffer-line (nth 3 lines)))
+	     (component (bd-jira-issue--parse-create-buffer-line (nth 4 lines)))
+	     (project (bd-jira-issue--parse-create-buffer-line (nth 5 lines)))
 	     (description (bd-jira-issue--parse-create-buffer-line
-			   (string-join (cddddr lines) "\n")))
+			   (string-join (seq-drop lines 6) "\n")))
 	     (tmp-file (make-temp-file "benedict-issue-create")))
 	(save-window-excursion
 	  (let ((buffer (find-file tmp-file)))
@@ -252,6 +256,8 @@
 	(message (format "issue content saved to: %s" tmp-file))
 	(list :title title
 	      :issue-type issue-type
+	      :component component
+	      :project project
 	      :label label
 	      :parent parent
 	      :description description))
@@ -264,11 +270,11 @@
   (let ((result nil))
     (when-let ((issue-spec (bd-jira-issue--parse-create-buffer)))
       ;; Create the issue
-      (cl-destructuring-bind (&key title issue-type label parent description &allow-other-keys)
+      (cl-destructuring-bind (&key title issue-type label parent project component description &allow-other-keys)
 	  issue-spec
 	(let ((fields (list
-		       '(project . ((key . "XDR")))
-		       '(components . (((name . "Engine"))))
+		       (cons 'project (list (cons 'key project)))
+		       (cons 'components (list (list (cons 'name component))))
 		       (cons 'description description)
 		       (cons 'summary title)
 		       ;; when we get multiple do a split on some delimiter char
@@ -310,37 +316,25 @@
     (mapcar
      (lambda (it) (alist-get 'name it)))))
 
-(defun benedict-jira-issue/create ()
-  "Generate a buffer to create a new jira issue."
+(cl-defun benedict-jira-issue/create (&key project component &allow-other-keys)
+  "Generate a buffer to create a new jira issue.
+PROJECT and COMPONENT can optionally be specified as keywords."
   (interactive)
   (let ((issue-type (completing-read
 		     "issue type: " (bd-jira-issue--issue-types)))
-	(buffer (switch-to-buffer *benedict-jira-create-issue-buffer*)))
+	(_buffer (switch-to-buffer *benedict-jira-create-issue-buffer*)))
     (kill-region (point-min) (point-max))
     (insert "Title: \n")
     (insert (format "Issue Type: %s\n" issue-type))
     (insert "Label: \n")
     (insert "Parent: \n")
+    (insert "Component: ")
+    (when component (insert component))
+    (insert "\n")
+    (insert "Project: ")
+    (when project (insert project))
+    (insert "\n")
     (insert "Description: \n\n")
-    (cond
-      ((equal issue-type "Bug")
-       (insert
-	(string-join
-	 (list "Steps to reproduce the behavior: "
-	       "Expected behavior: "
-	       "Screenshots: "
-	       (string-join
-		(list
-		 "Browser (please complete the following information):"
-		 " - OS: [e.g. Windows]: "
-		 " - Browser [e.g. firefox, chrome, safari]: "
-		 " -  Version [e.g. 22]: ")
-		"\n")
-	       "Additional Context: ")
-	 "\n\n")))
-      ((equal issue-type "Task")
-       (insert "\n"))
-      (t nil))
     (goto-char 0)
     (markdown-mode)
     (benedict-jira-issue--create-mode 1)))
