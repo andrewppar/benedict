@@ -304,16 +304,17 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   (let ((issue-key (plist-get bd-jira-view--input-data :key)))
     (bd-jira-issue/add-link issue-key relation relatum)))
 
-(defun bd-jira-view/update-status (status)
-  "Update the status of the current issue with STATUS."
-  (interactive
-   (list
-    (completing-read "new status: "
-		     (mapcar #'car *bd-jira-issue/transitions*)
-		     nil
-		     t)))
-  (let ((key (plist-get bd-jira-view--input-data :key)))
-    (bd-jira-issue/update-status key status)))
+(defun bd-jira-view/update-status ()
+  "Update the STATUS of the current issue."
+  (interactive)
+  (let* ((key (plist-get bd-jira-view--input-data :key))
+	 (transitions (bd-jira-issue/transitions key))
+	 ;; I can't tell if this block is an abstraction violation.
+	 ;; it feels clunky but I'm not sure where to put user selection
+	 ;; vs the right API parameters in bd-jira-issue
+	 (status (completing-read "new status: " (mapcar #'car transitions) nil t))
+	 (status-id (alist-get status transitions nil nil #'equal)))
+    (bd-jira-issue/update-status key status status-id)))
 
 (defun bd-jira-view--sprint->id (sprint-spec)
   "Convert SPRINT-SPEC into an alist entry of a formatted name to an id."

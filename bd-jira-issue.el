@@ -328,7 +328,7 @@ PROJECT and COMPONENT can optionally be specified as keywords."
 ;;; Edit
 
 
-(defun bd-jira-issue--get-transitions (issue-key)
+(defun bd-jira-issue/transitions (issue-key)
   "Get available transitions for a JIRA issue with ISSUE-KEY.
 Returns an alist where each element is a cons cell with the transition name as
 the car and the transition ID (converted to a number) as the cdr.  This function
@@ -342,26 +342,18 @@ requires `bd-jira-request' to fetch the transition data from the JIRA API."
     'transitions
     (bd-jira-request (format "issue/%s/transitions" issue-key)))))
 
-(defun bd-jira-issue/update-status (issue-key status)
-  "Update ISSUE-KEY to have STATUS."
-  (if-let ((transitions (bd-jira-issue--get-transitions issue-key)))
-      (if (member status (mapcar #'car transitions))
-	  (let* ((id (alist-get status transitions nil nil #'equal))
-		 (payload (list
-			   (cons 'transition
-				 (list (cons 'name status)
-				       (cons 'id id))))))
-	    (bd-jira-request (format "issue/%s/transitions" issue-key)
-			     :type "POST"
-			     :headers '(("Content-Type" . "application/json")
-					("Accept" . "application/json"))
-			     :data (json-encode payload)))
-	(progn
-	  (warn (format "Cannot update issue: %s is not a known status" status))
-	  '((success . nil))))
-    (progn
-      (warn "Cannot update issue: no transitions found")
-      '((success . nil)))))
+(defun bd-jira-issue/update-status (issue-key transition-name transition-id)
+  "Update ISSUE-KEY to have a new status with TRANSITION-NAME TRANSITION-ID.
+Assumes TRANSITION-NAME is valid for the issue."
+  (let* ((payload (list
+		   (cons 'transition
+			 (list (cons 'name transition-name)
+			       (cons 'id transition-id))))))
+    (bd-jira-request (format "issue/%s/transitions" issue-key)
+		     :type "POST"
+		     :headers '(("Content-Type" . "application/json")
+				("Accept" . "application/json"))
+		     :data (json-encode payload))))
 
 (defun bd-jira-issue/assign (issue-key &optional account-id)
   "Assign issue with ISSUE-KEY to ACCOUNT-ID or the current user."
