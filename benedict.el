@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'benedict-config)
+(require 'cl-lib)
 
 ;;;###autoload
 (defun benedict/init! ()
@@ -69,11 +70,12 @@
   (benedict-jira-view/issue-detail issue-key))
 
 ;;;###autoload
-(defun benedict/issue-create ()
-  "Create a new jira issue."
+(cl-defun benedict/issue-create (&key project component &allow-other-keys)
+  "Create a new jira issue.
+Optionally specify COMPONENT and PROJECT as keywords."
   (interactive)
   (benedict/init!)
-  (benedict-jira-issue/create))
+  (benedict-jira-issue/create project component))
 
 ;;;###autoload
 (defun benedict/issue-update (issue-key field &rest values)

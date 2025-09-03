@@ -18,7 +18,6 @@
 (require 'bd-jira-request)
 (require 'bd-jira-user)
 (require 'bd-jira-config)
-(require 'cl-lib)
 (require 'markdown-mode)
 
 ;;;;;;;;;;;;;
@@ -43,20 +42,6 @@
   '("Critical" "Major" "Blocker" "Highest" "High" "TBD"
     "Normal" "Medium"
     "Low" "Lowest" ))
-
-(defconst *bd-jira-issue/transitions*
-  ;;(mapcar
-  ;; (lambda (transition)
-  ;;   (cons
-  ;;    (alist-get 'name transition)
-  ;;    (string-to-number (alist-get 'id transition))))
-  ;; (alist-get
-  ;;  'transitions
-  ;;  (bd-jira-request "issue/XDR-3078/transitions")))
-  '(("Backlog" . 21) ("Selected for Development" . 31)
-    ("In Progress" . 41)
-    ("QA" . 61) ("Ready for QA" . 91) ("Ready For Acceptance" . 101) ("In Review" . 111)
-    ("Done" . 121)))
 
 (defconst *bd-jira-issue/statuses*
   '("Open"
@@ -316,7 +301,7 @@
     (mapcar
      (lambda (it) (alist-get 'name it)))))
 
-(cl-defun benedict-jira-issue/create (&key project component &allow-other-keys)
+(cl-defun benedict-jira-issue/create (project component)
   "Generate a buffer to create a new jira issue.
 PROJECT and COMPONENT can optionally be specified as keywords."
   (interactive)
@@ -342,21 +327,40 @@ PROJECT and COMPONENT can optionally be specified as keywords."
 ;;;;;;;;
 ;;; Edit
 
+
+(defun bd-jira-issue--get-transitions (issue-key)
+  "Get available transitions for a JIRA issue with ISSUE-KEY.
+Returns an alist where each element is a cons cell with the transition name as
+the car and the transition ID (converted to a number) as the cdr.  This function
+requires `bd-jira-request' to fetch the transition data from the JIRA API."
+  (mapcar
+   (lambda (transition)
+     (cons
+      (alist-get 'name transition)
+      (string-to-number (alist-get 'id transition))))
+   (alist-get
+    'transitions
+    (bd-jira-request (format "issue/%s/transitions" issue-key)))))
+
 (defun bd-jira-issue/update-status (issue-key status)
   "Update ISSUE-KEY to have STATUS."
-  (if (member status (mapcar #'car *bd-jira-issue/transitions*))
-      (let* ((id (alist-get status *bd-jira-issue/transitions* nil nil #'equal))
-	     (payload (list
-		       (cons 'transition
-			     (list (cons 'name status)
-				   (cons 'id id))))))
-	(bd-jira-request (format "issue/%s/transitions" issue-key)
-			 :type "POST"
-			 :headers '(("Content-Type" . "application/json")
-				    ("Accept" . "application/json"))
-			 :data (json-encode payload)))
+  (if-let ((transitions (bd-jira-issue--get-transitions issue-key)))
+      (if (member status (mapcar #'car transitions))
+	  (let* ((id (alist-get status transitions nil nil #'equal))
+		 (payload (list
+			   (cons 'transition
+				 (list (cons 'name status)
+				       (cons 'id id))))))
+	    (bd-jira-request (format "issue/%s/transitions" issue-key)
+			     :type "POST"
+			     :headers '(("Content-Type" . "application/json")
+					("Accept" . "application/json"))
+			     :data (json-encode payload)))
+	(progn
+	  (warn (format "Cannot update issue: %s is not a known status" status))
+	  '((success . nil))))
     (progn
-      (warn (format "Cannot update issue: %s is not a known status" status))
+      (warn "Cannot update issue: no transitions found")
       '((success . nil)))))
 
 (defun bd-jira-issue/assign (issue-key &optional account-id)
