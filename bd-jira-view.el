@@ -177,7 +177,8 @@
 	  (save-buffer 0)
 	  (bd-jira-view--quote
 	   (shell-command-to-string
-	    (format "%s %s -t org -f jira" executable temp-file))))))))
+	    (format "%s %s -t org -f jira" executable temp-file)))
+	  (kill-buffer temp-file))))))
 
 (defun bd-jira-view--format-issue-key (issue-key)
   "Format ISSUE-KEY.
