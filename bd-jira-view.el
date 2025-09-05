@@ -156,7 +156,7 @@
      (goto-char (point-min))))
 
 (defun bd-jira-view--quote (string)
-  "Ensure that STRING is insertable in rog mode."
+  "Ensure that STRING is insertable in org mode."
   (if string
       (string-join
        (mapcar (lambda (line) (format " %s" line)) (split-string string "\n"))
@@ -169,14 +169,15 @@
   (let ((executable (string-trim (shell-command-to-string "which pandoc"))))
     (if (equal executable "")
 	(bd-jira-view--quote string)
-      (bd-jira-view--quote
-       (shell-command-to-string
-	(format "echo \"%s\" | %s -f jira -t org"
-		(string-replace
-		 "{code"
-		 "{noformat"
-		 (string-replace "`" "'" string))
-		executable))))))
+      (save-window-excursion
+	(let ((temp-file (make-temp-file "benedict")))
+	  (find-file temp-file)
+	  (message (format "writing jira issue description to %s..." temp-file))
+	  (insert string)
+	  (save-buffer 0)
+	  (bd-jira-view--quote
+	   (shell-command-to-string
+	    (format "%s %s -t org -f jira" executable temp-file))))))))
 
 (defun bd-jira-view--format-issue-key (issue-key)
   "Format ISSUE-KEY.
