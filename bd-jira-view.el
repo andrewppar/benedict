@@ -175,10 +175,11 @@
 	  (message (format "writing jira issue description to %s..." temp-file))
 	  (insert string)
 	  (save-buffer 0)
-	  (bd-jira-view--quote
-	   (shell-command-to-string
-	    (format "%s %s -t org -f jira" executable temp-file)))
-	  (kill-buffer temp-file))))))
+	  (let ((result (bd-jira-view--quote
+			 (shell-command-to-string
+			  (format "%s %s -t org -f jira" executable temp-file)))))
+	    (kill-buffer (get-file-buffer temp-file))
+	    result))))))
 
 (defun bd-jira-view--format-issue-key (issue-key)
   "Format ISSUE-KEY.
