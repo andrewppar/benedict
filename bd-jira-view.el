@@ -163,24 +163,6 @@
        "\n")
     ""))
 
-(defun bd-jira-view--jira-md->org (string)
-  "Use pandoc to convert STRING to org mode if available."
-  ;; maybe cache pandoc exetule check
-  (let ((executable (string-trim (shell-command-to-string "which pandoc"))))
-    (if (equal executable "")
-	(bd-jira-view--quote string)
-      (save-window-excursion
-	(let ((temp-file (make-temp-file "benedict")))
-	  (find-file temp-file)
-	  (message (format "writing jira issue description to %s..." temp-file))
-	  (insert string)
-	  (save-buffer 0)
-	  (let ((result (bd-jira-view--quote
-			 (shell-command-to-string
-			  (format "%s %s -t org -f jira" executable temp-file)))))
-	    (kill-buffer (get-file-buffer temp-file))
-	    result))))))
-
 (defun bd-jira-view--format-issue-key (issue-key)
   "Format ISSUE-KEY.
 Make an org mode link if :domain is available in jira configuration."
@@ -188,14 +170,66 @@ Make an org mode link if :domain is available in jira configuration."
       (format "[[https://%s/browse/%s][%s]]" domain issue-key issue-key)
     issue-key))
 
-(defun bd-jira-view--org->jira-md (string)
-  "Use pandoc to convert STRING to jira-md."
+(defconst bd-jira-view--pandoc nil "Pandoc executable.")
+
+
+(defun bd-jira-view--set-pandoc ()
+  "Find and set the path to the pandoc executable.
+If pandoc is found in the system PATH, set `bd-jira-view--pandoc' to the full
+path of the executable.  If pandoc is not found, set `bd-jira-view--pandoc' to
+the keyword `:not-found'."
   (let ((executable (string-trim (shell-command-to-string "which pandoc"))))
     (if (equal executable "")
-	(bd-jira-view--quote string)
-      (bd-jira-view--quote
-       (shell-command-to-string
-	(format "echo \"%s\" | %s -f jira -t org" string executable))))))
+	(setq bd-jira-view--pandoc :not-found)
+      (setq bd-jira-view--pandoc executable))))
+
+
+(defun bd-jira-view--get-pandoc ()
+  "Return the path to the pandoc executable or nil if not found.
+
+If the path has been cached in `bd-jira-view--pandoc', return that.  If the
+path has not been determined yet, try to find it and cache the result.  If
+pandoc has previously been determined to be not available, return nil."
+  (cond ((equal bd-jira-view--pandoc :not-found) nil)
+	((not bd-jira-view--pandoc) (bd-jira-view--set-pandoc))
+	(t bd-jira-view--pandoc)))
+
+
+(defun bd-jira-view--run-pandoc (string from to)
+  "Convert STRING from format FROM to format TO using pandoc.
+If pandoc is available, this function creates a temporary file with the STRING
+content, runs pandoc to convert between the specified formats, and returns the
+conversion result.  If pandoc is not available, it returns the original STRING
+with quotes.
+
+STRING is the text to be converted.
+FROM is the source format symbol.
+TO is the target format symbol."
+  (if-let ((executable (bd-jira-view--get-pandoc)))
+      (save-window-excursion
+	(let* ((temp-file (make-temp-file "benedict"))
+	       (pandoc-from (substring (format "%s" from) 1))
+	       (pandoc-to (substring (format "%s" to) 1))
+	       (command (format "%s %s -t %s -f %s"
+				executable temp-file pandoc-to pandoc-from)))
+	  (find-file temp-file)
+	  (message (format "writing jira data to %s..." temp-file))
+	  (insert string)
+	  (save-buffer 0)
+	  (let ((output (bd-jira-view--quote (shell-command-to-string command))))
+	    (kill-buffer (get-file-buffer temp-file))
+	    output)))
+    (bd-jira-view--quote string)))
+
+
+
+(defun bd-jira-view--jira-md->org (string)
+  "Use pandoc to convert STRING to org mode if available."
+  (bd-jira-view--run-pandoc string :jira :org))
+
+(defun bd-jira-view--org->jira-md (string)
+  "Use pandoc to convert STRING to jira-md."
+  (bd-jira-view--run-pandoc string :org :jira))
 
 (defun bd-jira-view--format-related (related-issues)
   "Format any issues in RELATED-ISSUES to be displayed."
