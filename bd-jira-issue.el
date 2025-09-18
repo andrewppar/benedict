@@ -186,8 +186,8 @@
 (defun bd-jira-issue/get-issues-from-query (jql-query)
   "Get JIRA issues satisfying JQL-QUERY."
   (bd-jira-issue--parse-issue-response
-   (bd-jira-request
-    "search"
+   (bd-jira-v3-request
+    "search/jql"
     :headers '(("Accept" . "application/json")
 	       ("Content-Type" . "application/json"))
     :parameters (list (cons "jql" jql-query)

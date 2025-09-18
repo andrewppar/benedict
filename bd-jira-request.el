@@ -25,9 +25,9 @@
 
 (defun bd-jira-request--request
     (jira-segment path rest-method headers parameters data)
-  "Make a request to JIRA-SEGMENT - a hard coded endpoint specified by
-:agile or :standard.
-Use REST-METHOD at PATH for that endpoing. Passing along HEADERS, PARAMETERS,
+  "Make a request to JIRA-SEGMENT.
+JIRA-SEGMENT is hard coded endpoint specified by :agile or :standard.
+Use REST-METHOD at PATH for that endpoing.  Passing along HEADERS, PARAMETERS,
 and DATA."
   (when *bd-jira-config/config*
     (cl-destructuring-bind (&key domain token user &allow-other-keys)
@@ -39,6 +39,8 @@ and DATA."
 			(format "https://%s/rest/api/2/%s" domain path))
 		       ((eq jira-segment :agile)
 			(format "https://%s/rest/agile/1.0/%s" domain path))
+		       ((eq jira-segment :v3)
+			(format "https://%s/rest/api/3/%s" domain path))
 		       (t
 			(format "https://%s/rest/api/2/%s" domain path)))))
 	(request-response-data
@@ -52,9 +54,16 @@ and DATA."
 
 (cl-defun bd-jira-request (path &key type headers parameters data)
   "Make a get request for PATH to JIRAs standard API.
-Optionally specify REST-METHOD - the default is GET.
+Optionally specify TYPE - the default is GET.
 Optionally specify HEADERS, PARAMETERS or DATA."
   (bd-jira-request--request :standard path type headers parameters data))
+
+(cl-defun bd-jira-v3-request (path &key type headers parameters data)
+  "Make a get request for PATH to JIRAs v3 API.
+Optionally specify TYPE - the default is GET.
+Optionally specify HEADERS, PARAMETERS or DATA."
+  (bd-jira-request--request :v3 path type headers parameters data))
+
 
 (cl-defun bd-jira-agile-request (path &key type headers parameters data)
   "Make a get request for PATH to JIRAs agile API.
