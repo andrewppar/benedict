@@ -422,6 +422,14 @@ Sets the default priority to A."
       (benedict-jira-view/issue-detail
        (string-trim (substring-no-properties (match-string 0 word)))))))
 
+(defun bd-jira-view/add-parent ()
+  "Add a parent to an issue."
+  (interactive)
+  (let* ((key (plist-get bd-jira-view--input-data :key))
+	 (parent (read-string "parent issue: ")))
+    (bd-jira-issue/add-parent key parent)))
+
+
       ;;;
 ;;;;;;;;;
 
