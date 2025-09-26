@@ -336,7 +336,7 @@ Optionally pass INITIAL-INPUT to populate the buffer."
   "Add a link from the current issue to RELATUM via RELATION."
   (interactive
    (list
-    (completing-read "relation: " *bd-jira-issue/link-types* nil t)
+    (completing-read "relation: " (bd-jira-issue/link-types) nil t)
     (read-string "relatum: ")))
   (let ((issue-key (plist-get bd-jira-view--input-data :key)))
     (bd-jira-issue/add-link issue-key relation relatum)))

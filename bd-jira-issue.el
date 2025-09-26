@@ -53,14 +53,19 @@
     "Ready For Acceptance"
     "Done"))
 
-(defconst *bd-jira-issue/link-types*
-  (thread-last
-    (bd-jira-request "issueLinkType"
-  		     :headers '(("Content-Type" . "application/json")
-  				("Accept" . "application/json")))
-    (alist-get 'issueLinkTypes)
-    (mapcar
-     (lambda (link-type) (alist-get 'name link-type)))))
+(defconst *bd-jira-issue/link-types* nil)
+
+(defun bd-jira-issue/link-types ()
+  "Get the available issue link types."
+  (or *bd-jira-issue/link-types*
+      (thread-last
+	(bd-jira-request "issueLinkType"
+  			 :headers '(("Content-Type" . "application/json")
+  				    ("Accept" . "application/json")))
+	(alist-get 'issueLinkTypes)
+	(mapcar
+	 (lambda (link-type) (alist-get 'name link-type))))))
+
 
 
 ;;; Custom Deserialization
@@ -382,7 +387,7 @@ Assumes TRANSITION-NAME is valid for the issue."
 
 (defun bd-jira-issue/add-link (from-key relation to-key)
   "Link FROM-KEY to TO-KEY via RELATION."
-  (if (member relation *bd-jira-issue/link-types*)
+  (if (member relation (bd-jira-issue/link-types*))
       (bd-jira-request
        "issueLink"
        :type "POST"
