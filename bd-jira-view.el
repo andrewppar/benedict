@@ -205,21 +205,23 @@ with quotes.
 STRING is the text to be converted.
 FROM is the source format symbol.
 TO is the target format symbol."
-  (if-let ((executable (bd-jira-view--get-pandoc)))
-      (save-window-excursion
-	(let* ((temp-file (make-temp-file "benedict"))
-	       (pandoc-from (substring (format "%s" from) 1))
-	       (pandoc-to (substring (format "%s" to) 1))
-	       (command (format "%s %s -t %s -f %s"
-				executable temp-file pandoc-to pandoc-from)))
-	  (find-file temp-file)
-	  (message (format "writing jira data to %s..." temp-file))
-	  (insert string)
-	  (save-buffer 0)
-	  (let ((output (bd-jira-view--quote (shell-command-to-string command))))
-	    (kill-buffer (get-file-buffer temp-file))
-	    output)))
-    (bd-jira-view--quote string)))
+  (if string
+      (if-let ((executable (bd-jira-view--get-pandoc)))
+	  (save-window-excursion
+	    (let* ((temp-file (make-temp-file "benedict"))
+		   (pandoc-from (substring (format "%s" from) 1))
+		   (pandoc-to (substring (format "%s" to) 1))
+		   (command (format "%s %s -t %s -f %s"
+				    executable temp-file pandoc-to pandoc-from)))
+	      (find-file temp-file)
+	      (message (format "writing jira data to %s..." temp-file))
+	      (insert string)
+	      (save-buffer 0)
+	      (let ((output (bd-jira-view--quote (shell-command-to-string command))))
+		(kill-buffer (get-file-buffer temp-file))
+		output)))
+	(bd-jira-view--quote string))
+    ""))
 
 
 

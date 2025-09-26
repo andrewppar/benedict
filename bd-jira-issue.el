@@ -387,7 +387,7 @@ Assumes TRANSITION-NAME is valid for the issue."
 
 (defun bd-jira-issue/add-link (from-key relation to-key)
   "Link FROM-KEY to TO-KEY via RELATION."
-  (if (member relation (bd-jira-issue/link-types*))
+  (if (member relation (bd-jira-issue/link-types))
       (bd-jira-request
        "issueLink"
        :type "POST"
