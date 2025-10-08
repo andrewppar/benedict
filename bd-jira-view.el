@@ -688,7 +688,7 @@ This is used for customization of table cell coloring."
 	 (new-data (list :current original :original original)))
     (cl-destructuring-bind (&key original &allow-other-keys)
 	data
-      (bd-jira-view--view-issues-table new-data columns original color-spec))))
+      (bd-jira-view--table new-data columns original color-spec))))
 
 (defun bd-jira-view/sort-by ()
   "Sort the current view."
@@ -721,7 +721,7 @@ This is used for customization of table cell coloring."
 				     (plist-get item-two sort-col)))
 			  current))
 	     (new-data (list :current original :original original)))
-	(bd-jira-view--view-issues-table new-data columns new-issues color-spec)))))
+	(bd-jira-view--table new-data columns new-issues color-spec)))))
 
 (defun bd-jira-view/issue-detail-at-point (line)
   "Extract and view issue details from the string LINE at point.
