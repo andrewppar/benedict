@@ -99,6 +99,13 @@ Optionally specify COMPONENT and PROJECT as keywords."
 	  (format "Cannot update %s with unrecognized field %s"
 		  issue-key field)))))
 
+;;;###autoload
+(defun benedict/board-list ()
+  "List boards optionally searching by project and name."
+  (interactive)
+  (let* ((project (read-string "project: "))
+	 (boards (bd-jira-board/list project)))
+    (bd-jira-view/boards boards)))
 
 (provide 'benedict)
 ;;; benedict.el ends here

@@ -36,6 +36,8 @@
 	((equal type "Task") "grey")
 	((equal type "Sub-task") "light grey")
 	((equal type "Bug") "red")
+	((equal type "kanban") "green")
+	((equal type "scrum") "orange")
 	(t nil)))
 
 (defun bd-jira-view--status-color (status)
@@ -222,8 +224,6 @@ TO is the target format symbol."
 		output)))
 	(bd-jira-view--quote string))
     ""))
-
-
 
 (defun bd-jira-view--jira-md->org (string)
   "Use pandoc to convert STRING to org mode if available."
@@ -435,21 +435,27 @@ Sets the default priority to A."
       ;;;
 ;;;;;;;;;
 
-(define-derived-mode bd-jira-view/issues-mode fundamental-mode
+(define-derived-mode bd-jira-view/table-mode fundamental-mode
   "View JIRA issues"
   "Major mode for viewing jira issues."
-  (define-key bd-jira-view/issues-mode-map
+  (define-key bd-jira-view/table-mode-map
       (kbd "C-c C-f") #'bd-jira-view/add-filter)
-  (define-key bd-jira-view/issues-mode-map
+  (define-key bd-jira-view/table-mode-map
       (kbd "C-c C-q") #'bd-jira-view/quit)
-  (define-key bd-jira-view/issues-mode-map
+  (define-key bd-jira-view/table-mode-map
       (kbd "C-c C-o") #'bd-jira-view/detail-at-point)
-  (define-key bd-jira-view/issues-mode-map
+  (define-key bd-jira-view/table-mode-map
       (kbd "C-c C-s") #'bd-jira-view/sort-by)
-  (define-key bd-jira-view/issues-mode-map
+  (define-key bd-jira-view/table-mode-map
       (kbd "C-c C-x") #'bd-jira-view/remove-filters))
 
+
+
+
 (defvar bd-jira-view--issues-data nil
+  "A place to store data about issues.")
+
+(defvar bd-jira-view--boards-data nil
   "A place to store data about issues.")
 
 (defmacro bd-jira-view--with-issues-buffer (data &rest body)
@@ -463,7 +469,20 @@ Sets the default priority to A."
      (delete-region (point-min) (point-max))
      (progn ,@body)
      (read-only-mode 1)
-     (bd-jira-view/issues-mode)
+     (bd-jira-view/table-mode)
+     (goto-char (point-min))))
+
+(defmacro bd-jira-view--with-boards-buffer (data &rest body)
+  "Execute BODY within the DATA stored in bd-jira-view--issues-data."
+  (declare (indent defun))
+  `(progn
+     (switch-to-buffer "*benedict boards view*")
+     (setq bd-jira-view--boards-data ,data)
+     (read-only-mode -1)
+     (delete-region (point-min) (point-max))
+     (progn ,@body)
+     (read-only-mode 1)
+     (bd-jira-view/table-mode)
      (goto-char (point-min))))
 
 (defun bd-jira-view--column->max (columns rows)
@@ -477,7 +496,7 @@ Sets the default priority to A."
     (dolist (row rows)
       (dolist (column columns)
 	(let ((old-val (plist-get result column))
-	      (current-val (length (plist-get row column))))
+	      (current-val (length (format "%s" (plist-get row column)))))
 	  (when (< old-val current-val)
 	    (setq result (plist-put result column current-val))))))
     result))
@@ -487,6 +506,8 @@ Sets the default priority to A."
   (let ((current-size (length value))
 	(max-size (plist-get column->max-size column)))
     (make-string (+ (- max-size current-size) 1) ? )))
+
+;;; boards
 
 (defun bd-jira-view--generate-table-string
     (columns rows column->color-fn)
@@ -518,10 +539,33 @@ Sets the default priority to A."
       (string-join (cons header (cons divider body)) "\n"))))
 
 (defun bd-jira-view--view-issues-table
-    (original-data columns rows &optional column->color-fn)
+    (original-data columns rows column->color-fn)
   "Create a table for viewing ROWS that have COLUMNS and ORIGINAL-DATA."
   (bd-jira-view--with-issues-buffer original-data
       (insert (bd-jira-view--generate-table-string columns rows column->color-fn))))
+
+(defun bd-jira-view--view-boards-table
+    (original-data columns rows column->color-fn)
+  "Create a table for viewing ROWS that have COLUMNS and ORIGINAL-DATA."
+  (bd-jira-view--with-boards-buffer original-data
+      (insert (bd-jira-view--generate-table-string columns rows column->color-fn))))
+
+(defun bd-jira-view--table
+    (table-type original columns rows &optional column->color-fn)
+  "Render a table based on the given TABLE-TYPE.
+
+TABLE-TYPE is a keyword that specifies the type of table to render.
+It can either be :issues or :boards.
+
+ORIGINAL represents the original source of the data.
+COLUMNS is a list of columns to be displayed in the table.
+ROWS is a list of row data to populate the table.
+
+COLUMN->COLOR-FN is an optional function that maps column names to colors.
+This is used for customization of table cell coloring."
+  (pcase table-type
+    (:issues (bd-jira-view--view-issues-table original columns rows column->color-fn))
+    (:boards (bd-jira-view--view-boards-table original columns rows column->color-fn))))
 
 (defun bd-jira-view--truncate (string width)
   "Truncate STRING to WIDTH."
@@ -531,6 +575,9 @@ Sets the default priority to A."
 
 (defvar bd-jira-view--issue-list-columns
   (list :type :key :status :summary :assignee :reporter))
+
+(defvar bd-jira-view--boards-list-columns
+  (list :number :type :name))
 
 (defun bd-jira-view--process-issues (issues)
   "Ensure that issue summaries in ISSUES is truncated."
@@ -545,7 +592,12 @@ Sets the default priority to A."
   (list
    :type #'bd-jira-view--type-color
    :status #'bd-jira-view--status-color
-   :key (lambda (x) "yellow")))
+   :key (lambda (_x) "yellow")))
+
+(defvar bd-jira-view--color-boards-spec
+  (list
+   :number (lambda (_x) "yellow")
+   :type #'bd-jira-view--type-color))
 
 (defun bd-jira-view/issues (issues)
   "View ISSUES as a table."
@@ -553,6 +605,18 @@ Sets the default priority to A."
 	(rows (bd-jira-view--process-issues issues))
 	(metadata (list :original issues :current issues)))
     (bd-jira-view--view-issues-table metadata columns rows bd-jira-view--color-issues-spec)))
+
+(defun bd-jira-view/boards (boards)
+  "Create a new buffer with a view of BOARDS."
+  (let ((columns bd-jira-view--boards-list-columns)
+	(rows (seq-reduce
+	       (lambda (result row)
+		 (let ((number (plist-get row :number)))
+		   (cons (plist-put row :number (format "%s" number)) result)))
+	       boards
+	       '()))
+	(metadata (list :original boards :current boards)))
+    (bd-jira-view--view-boards-table metadata columns rows bd-jira-view--color-boards-spec)))
 
 (defun bd-jira-view--keyword->name (keyword)
   "Get the name of KEYWORD."
@@ -569,81 +633,125 @@ Sets the default priority to A."
 (defun bd-jira-view/add-filter ()
   "Add a filter to the current view."
   (interactive)
-  (cl-destructuring-bind (&key current original)
-      bd-jira-view--issues-data
-    (let* ((filter-col (alist-get
-			(completing-read
-			 "select filter column: "
-			 (mapcar
-			  #'bd-jira-view--keyword->name
-			  bd-jira-view--issue-list-columns)
-			 nil t)
-			(bd-jira-view--column-name->column)
-			nil nil #'equal))
-	   (values (mapcar
-		    (lambda (issue) (plist-get issue filter-col))
-		    current))
-	   (filter-group (mapcar
-			  #'downcase
-			  (completing-read-multiple "filter on (comma separated): " values)))
-	   (new-issues (seq-filter
-			(lambda (issue)
-			  (thread-first
-			    issue
-			    (plist-get filter-col)
-			    downcase
-			    (member filter-group)))
-			current)))
-      ;; put a place to save the original
-      (bd-jira-view--view-issues-table
-       (list :current new-issues :original original)
-       bd-jira-view--issue-list-columns
-       new-issues
-       bd-jira-view--color-issues-spec))))
+  (let* ((buffer (buffer-name))
+	 (table-type (cond
+		       ((equal buffer "*benedict issues view*") :issues)
+		       ((equal buffer "*benedict boards view*") :boards)))
+	 (data (pcase table-type
+		 (:issues bd-jira-view--issues-data)
+		 (:boards bd-jira-view--boards-data)))
+	 (columns (pcase table-type
+		    (:issues bd-jira-view--issue-list-columns)
+		    (:boards bd-jira-view--boards-list-columns)))
+	 (color-spec (pcase table-type
+		       (:issues bd-jira-view--color-issues-spec)
+		       (:boards bd-jira-view--color-boards-spec))))
+    (cl-destructuring-bind (&key current original)
+	data
+      (let* ((filter-col (alist-get
+			  (completing-read
+			   "select filter column: "
+			   (mapcar #'bd-jira-view--keyword->name columns)
+			   nil t)
+			  (bd-jira-view--column-name->column)
+			  nil nil #'equal))
+	     (values (mapcar (lambda (issue) (plist-get issue filter-col)) current))
+	     (filter-group (mapcar #'downcase (completing-read-multiple "filter on (comma separated): " values)))
+	     (new-issues (seq-filter
+			  (lambda (issue)
+			    (thread-first
+			      issue
+			      (plist-get filter-col)
+			      downcase
+			      (member filter-group)))
+			  current)))
+	;; put a place to save the original
+	(let ((new-data (list :current new-issues :original original)))
+	  (bd-jira-view--table new-data columns new-issues color-spec))))))
 
 (defun bd-jira-view/remove-filters ()
   "Remove any filters from the current view."
   (interactive)
-  (cl-destructuring-bind (&key original &allow-other-keys)
-      bd-jira-view--issues-data
-    (bd-jira-view--view-issues-table
-     (list :current original :original original)
-     bd-jira-view--issue-list-columns
-     original
-     bd-jira-view--color-issues-spec)))
+  (let* ((buffer (buffer-name))
+	 (table-type (cond
+		       ((equal buffer "*benedict issues view*") :issues)
+		       ((equal buffer "*benedict boards view*") :boards)))
+	 (data (pcase table-type
+		 (:issues bd-jira-view--issues-data)
+		 (:boards bd-jira-view--boards-data)))
+	 (columns (pcase table-type
+		    (:issues bd-jira-view--issue-list-columns)
+		    (:boards bd-jira-view--boards-list-columns)))
+	 (color-spec (pcase table-type
+		       (:issues bd-jira-view--color-issues-spec)
+		       (:boards bd-jira-view--color-boards-spec)))
+	 (new-data (list :current original :original original)))
+    (cl-destructuring-bind (&key original &allow-other-keys)
+	data
+      (bd-jira-view--view-issues-table new-data columns original color-spec))))
 
 (defun bd-jira-view/sort-by ()
   "Sort the current view."
   (interactive)
-  (cl-destructuring-bind (&key current original)
-      bd-jira-view--issues-data
-    (let* ((sort-col (alist-get
+  (let* ((buffer (buffer-name))
+	 (table-type (cond
+		       ((equal buffer "*benedict issues view*") :issues)
+		       ((equal buffer "*benedict boards view*") :boards)))
+	 (data (pcase table-type
+		 (:issues bd-jira-view--issues-data)
+		 (:boards bd-jira-view--boards-data)))
+	 (columns (pcase table-type
+		    (:issues bd-jira-view--issue-list-columns)
+		    (:boards bd-jira-view--boards-list-columns)))
+	 (color-spec (pcase table-type
+		       (:issues bd-jira-view--color-issues-spec)
+		       (:boards bd-jira-view--color-boards-spec))))
+    (cl-destructuring-bind (&key current original)
+	data
+      (let* ((sort-col (alist-get
 			(completing-read
 			 "select sort column: "
-			 (mapcar
-			  #'bd-jira-view--keyword->name
-			  bd-jira-view--issue-list-columns)
+			 (mapcar #'bd-jira-view--keyword->name columns)
 			 nil t)
 			(bd-jira-view--column-name->column)
 			nil nil #'equal))
-	   (new-issues (seq-sort
-			(lambda (issue-one issue-two)
-			  (string< (plist-get issue-one sort-col)
-				   (plist-get issue-two sort-col)))
-			current)))
-      (bd-jira-view--view-issues-table
-       (list :current new-issues :original original)
-       bd-jira-view--issue-list-columns
-       new-issues
-       bd-jira-view--color-issues-spec))))
+	     (new-issues (seq-sort
+			  (lambda (item-one item-two)
+			    (string< (plist-get item-one sort-col)
+				     (plist-get item-two sort-col)))
+			  current))
+	     (new-data (list :current original :original original)))
+	(bd-jira-view--view-issues-table new-data columns new-issues color-spec)))))
+
+(defun bd-jira-view/issue-detail-at-point (line)
+  "Extract and view issue details from the string LINE at point.
+
+Searches for an issue key in LINE, which should conform to the
+format `<PROJECT-KEY>-<ISSUE-ID>' (e.g., `ABC-123').  If found, it
+trims the match and calls `benedict-jira-view/issue-detail' with the
+result."
+  (when (string-match "\\s-+[A-Z]+-[0-9]+\\s-+" line)
+    (benedict-jira-view/issue-detail
+     (string-trim (substring-no-properties (match-string 0 line))))))
+
+(defun bd-jira-view/board-detail-at-point (line)
+  (let ((number (string-trim (car (split-string line)))))
+    (when number
+      (bd-jira-view/issues
+       (bd-jira-issue--parse-issue-response
+	(bd-jira-board/issues number))))))
 
 (defun bd-jira-view/detail-at-point ()
   "Create a new buffer with a detailed view of the issue at point."
   (interactive)
-  (let ((line (thing-at-point 'line)))
-    (when (string-match "\\s-+[A-Z]+-[0-9]+\\s-+" line)
-      (benedict-jira-view/issue-detail
-       (string-trim (substring-no-properties (match-string 0 line)))))))
+  (let* ((line (thing-at-point 'line))
+	 (buffer (buffer-name))
+	 (table-type (cond
+		       ((equal buffer "*benedict issues view*") :issues)
+		       ((equal buffer "*benedict boards view*") :boards))))
+    (pcase table-type
+      (:issues (bd-jira-view/issue-detail-at-point line))
+      (:boards (bd-jira-view/board-detail-at-point line)))))
 
 (provide 'bd-jira-view)
 ;;; bd-jira-view.el ends here

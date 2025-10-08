@@ -66,12 +66,10 @@
 	(mapcar
 	 (lambda (link-type) (alist-get 'name link-type))))))
 
-
-
 ;;; Custom Deserialization
 ;; Example set this const whereever with whatever values
 (defun bd-jira-issue--parse-sprints (sprint-array)
-  "Parse an array of jira sprint representations into the internal one."
+  "Parse a SPRINT-ARRAY representations into the internal one."
   (mapcar
    (lambda (sprint)
      (let ((name (alist-get 'name sprint))

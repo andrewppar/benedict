@@ -17,6 +17,9 @@
 ;; Comparison:
 ;; Try to be lighter weight and less opinionated than
 ;; org jira
+
+;;; Code:
+
 (require 'bd-jira-request)
 (require 'subr-x)
 (require 'json)
@@ -24,11 +27,25 @@
 ;;;;;;;;;;
 ;; sprints
 
+
+(defun bd-jira-board--parse-board (board)
+  "Parse JIRA board data into an organized list structure.
+BOARD is an alist containing Jira board information.  Returns a plist with
+standardized keys :name, :number, :url, :project, and :type with their
+corresponding values extracted from the board data."
+  (let ((name (alist-get 'name board))
+	(number (alist-get 'id board))
+	(type (alist-get 'type board))
+	(url (alist-get 'self board))
+	(project (alist-get 'projectName (alist-get 'location board))))
+    (list :name name :number number :url url :project project :type type)))
+
 (defun bd-jira-board/list (&optional project name)
   (let ((parameters '()))
     (when project (push (cons 'projectKeyOrId project) parameters))
     (when name (push (cons 'name name) parameters))
-    (bd-jira-agile-request "board" :parameters parameters)))
+    (let ((response (bd-jira-agile-request "board" :parameters parameters)))
+      (mapcar #'bd-jira-board--parse-board (alist-get 'values response)))))
 
 (defun bd-jira-board--fetch-jira-sprints (board-ids)
   (mapcan
@@ -45,7 +62,7 @@
     (list :id id :name name :state state)))
 
 (defun bd-jira-board/active-sprints (board-ids)
-  "Fetch any active sprints for BOARD-IDS"
+  "Fetch any active sprints for BOARD-IDS."
   (thread-last
     (bd-jira-board--fetch-jira-sprints board-ids)
     (seq-filter (lambda (sprint) (equal (alist-get 'state sprint) "active")))
