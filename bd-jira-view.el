@@ -622,13 +622,13 @@ This is used for customization of table cell coloring."
   "Get the name of KEYWORD."
   (substring (format "%s" keyword) 1))
 
-(defun bd-jira-view--column-name->column ()
+(defun bd-jira-view--column-name->column (columns)
   "Create a map from column names to the keywords representing them."
   (mapcar
    (lambda (symbol)
      (cons (bd-jira-view--keyword->name symbol)
 	   symbol))
-   bd-jira-view--issue-list-columns))
+   columns))
 
 (defun bd-jira-view/add-filter ()
   "Add a filter to the current view."
@@ -653,7 +653,7 @@ This is used for customization of table cell coloring."
 			   "select filter column: "
 			   (mapcar #'bd-jira-view--keyword->name columns)
 			   nil t)
-			  (bd-jira-view--column-name->column)
+			  (bd-jira-view--column-name->column columns)
 			  nil nil #'equal))
 	     (values (mapcar (lambda (issue) (plist-get issue filter-col)) current))
 	     (filter-group (mapcar #'downcase (completing-read-multiple "filter on (comma separated): " values)))
@@ -713,7 +713,7 @@ This is used for customization of table cell coloring."
 			 "select sort column: "
 			 (mapcar #'bd-jira-view--keyword->name columns)
 			 nil t)
-			(bd-jira-view--column-name->column)
+			(bd-jira-view--column-name->column columns)
 			nil nil #'equal))
 	     (new-issues (seq-sort
 			  (lambda (item-one item-two)
