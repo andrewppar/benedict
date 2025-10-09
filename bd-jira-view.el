@@ -217,7 +217,7 @@ TO is the target format symbol."
 				    executable temp-file pandoc-to pandoc-from)))
 	      (find-file temp-file)
 	      (message (format "writing jira data to %s..." temp-file))
-	      (insert string)
+	      (insert (replace-regexp-in-string "{code:.*}" "{code}\n" string))
 	      (save-buffer 0)
 	      (let ((output (bd-jira-view--quote (shell-command-to-string command))))
 		(kill-buffer (get-file-buffer temp-file))
@@ -685,10 +685,11 @@ This is used for customization of table cell coloring."
 	 (color-spec (pcase table-type
 		       (:issues bd-jira-view--color-issues-spec)
 		       (:boards bd-jira-view--color-boards-spec)))
-	 (new-data (list :current original :original original)))
+	 )
     (cl-destructuring-bind (&key original &allow-other-keys)
 	data
-      (bd-jira-view--table table-type new-data columns original color-spec))))
+      (let ((new-data (list :current original :original original)))
+	(bd-jira-view--table table-type new-data columns original color-spec)))))
 
 (defun sort-items (items sort-col)
   (seq-sort
