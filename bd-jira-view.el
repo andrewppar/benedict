@@ -470,6 +470,7 @@ Sets the default priority to A."
      (progn ,@body)
      (read-only-mode 1)
      (bd-jira-view/table-mode)
+     (hl-line-mode)
      (goto-char (point-min))))
 
 (defmacro bd-jira-view--with-boards-buffer (data &rest body)
@@ -483,6 +484,7 @@ Sets the default priority to A."
      (progn ,@body)
      (read-only-mode 1)
      (bd-jira-view/table-mode)
+     (hl-line-mode)
      (goto-char (point-min))))
 
 (defun bd-jira-view--column->max (columns rows)

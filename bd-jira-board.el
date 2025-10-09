@@ -102,15 +102,17 @@ corresponding values extracted from the board data."
 (cl-defun bd-jira-board/issues (board &key assignee)
   "Retrieve issues from the specified Jira BOARD.
 BOARD should be a board ID (numeric string or number).
-Returns up to 400 issues from the board."
+Returns up to 200u issues from the board.
+Optionally specify an ASSIGNEE."
   (let ((headers (list (cons "Accept"  "application/json")
-		       (cons "Content-Type"  "application/json"))))
-    (when assignee
-      (push (cons "jql" (format "accountId=%s" assignee)) headers))
+		       (cons "Content-Type"  "application/json")))
+	(jql "ORDER BY created DESC"))
+    (when assignee (setq jql (format "accountId=%s %s" jql assignee)))
     (bd-jira-agile-request
      (format "board/%s/issue" board)
      :headers headers
-     :parameters (list (cons 'maxResults 400)))))
+     :parameters (list (cons 'maxResults 200)
+		       (cons 'jql jql)))))
 
 (provide 'bd-jira-board)
 ;;; bd-jira-board.el ends here
