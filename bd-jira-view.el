@@ -219,7 +219,7 @@ TO is the target format symbol."
 	      (message (format "writing jira data to %s..." temp-file))
 	      (insert (replace-regexp-in-string "{code:.*}" "{code}\n" string))
 	      (save-buffer 0)
-	      (let ((output (bd-jira-view--quote (shell-command-to-string command))))
+	      (let ((output (shell-command-to-string command)))
 		(kill-buffer (get-file-buffer temp-file))
 		output)))
 	(bd-jira-view--quote string))
