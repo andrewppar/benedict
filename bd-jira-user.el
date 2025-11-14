@@ -51,7 +51,11 @@
 
 (defun bd-jira-user/id (search-term)
   "Get the account id associated with SEARCH-TERM."
-  (alist-get 'accountId (bd-jira-user/search search-term)))
+  (let ((search-result (bd-jira-user/search search-term)))
+    (cond ((stringp search-result)
+	   nil)
+	  ((listp search-result)
+	   (alist-get 'accountId search-result)))))
 
 (defun bd-jira-user/set-user ()
   "Set the configuration account id."
