@@ -258,7 +258,7 @@ TO is the target format symbol."
   (cl-destructuring-bind (&key
 			  sprints key parent assignee reporter
 			  labels type summary comments priority
-			  status related description &allow-other-keys)
+			  status created related description &allow-other-keys)
       issue
     (setq bd-jira-view--input-data issue)
     (bd-jira-view--with-issue-buffer key
@@ -270,6 +270,7 @@ TO is the target format symbol."
 	       (format "#+author: %s" reporter)
 	       (format "- *type* %s" type)
 	       (format "- *status* %s" status)
+	       (format "- *created* %s" created)
 	       (format "- *priority* %s" priority)
 	       (format "- *labels* %s" (string-join labels ", "))
 	       (format "- *assigned-to* %s" assignee)
