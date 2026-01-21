@@ -23,6 +23,11 @@
 (require 'cl-lib)
 (require 'request)
 
+(defun bd-jira-request--auth-token ()
+  (cl-destructuring-bind (&key token user &allow-other-keys)
+      *bd-jira-config/config*
+    (format "Basic %s" (base64-encode-string (format "%s:%s" user token) t))))
+
 (defun bd-jira-request--request
     (jira-segment path rest-method headers parameters data)
   "Make a request to JIRA-SEGMENT.
@@ -30,10 +35,9 @@ JIRA-SEGMENT is hard coded endpoint specified by :agile or :standard.
 Use REST-METHOD at PATH for that endpoing.  Passing along HEADERS, PARAMETERS,
 and DATA."
   (when *bd-jira-config/config*
-    (cl-destructuring-bind (&key domain token user &allow-other-keys)
+    (cl-destructuring-bind (&key domain &allow-other-keys)
 	*bd-jira-config/config*
-      (let ((auth-string (base64-encode-string (format "%s:%s" user token) t)))
-	(push (cons "Authorization" (format "Basic %s" auth-string)) headers))
+      (push (cons "Authorization" (bd-jira-request--auth-token)) headers)
       (let ((rest-method (or rest-method "GET"))
 	    (url (cond ((eq jira-segment :standard)
 			(format "https://%s/rest/api/2/%s" domain path))
@@ -70,6 +74,21 @@ Optionally specify HEADERS, PARAMETERS or DATA."
 Optionally specify TYPE - the default is GET.
 Optionally specify HEADERS, PARAMETERS or DATA."
   (bd-jira-request--request :agile path type headers parameters data))
+
+(defun bd-jira-content-request (url)
+  (let ((file (make-temp-file "benedict-content")))
+   (request url
+       :sync t
+       :encoding 'binary
+       :parser 'buffer-string
+       :success  (cl-function
+              (lambda (&key data &allow-other-keys)
+                (with-temp-file file
+                  (set-buffer-multibyte nil)
+                  (insert data))
+                (message "Image saved to %s" file)))
+       :headers (list (cons "Authorization" (bd-jira-request--auth-token))))
+   file))
 
 (provide 'bd-jira-request)
 ;;; bd-jira-request.el ends here

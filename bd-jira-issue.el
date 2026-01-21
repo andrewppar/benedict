@@ -137,10 +137,23 @@
 	(setq idx (+ idx 1))))
     result))
 
+(defun bd-jira-issue--parse-attachments (attachments)
+  (let ((result '())
+	(max-idx (length attachments))
+	(idx 0))
+    (while (< idx max-idx)
+      (let* ((attachment (aref attachments idx))
+	     (filename (alist-get 'filename attachment))
+	     (content (alist-get 'content attachment)))
+	(setq result (plist-put result filename content #'equal)
+	      idx (+ idx 1))))
+    result))
+
 (defun bd-jira-issue--parse (response-alist)
   "Parse a RESPONSE-ALIST representation of an issue into a plist."
   (let* ((key (alist-get 'key response-alist ""))
 	 (fields (alist-get 'fields response-alist ""))
+	 (attachments (alist-get 'attachment fields))
 	 (parent (alist-get 'key (alist-get 'parent fields) ""))
 	 (assignee (alist-get 'displayName (alist-get 'assignee fields) ""))
 	 (reporter (alist-get 'displayName (alist-get 'reporter fields) ""))
@@ -153,8 +166,8 @@
 	 (comments (bd-jira-issue--parse-comments fields))
 	 (related-issues (bd-jira-issue--parse-relations fields))
 	 (status (alist-get 'name (alist-get 'status fields) ""))
-
 	 (result (list :key key
+		       :attachments (bd-jira-issue--parse-attachments attachments)
 		       :parent parent
 		       :assignee assignee
 		       :reporter reporter

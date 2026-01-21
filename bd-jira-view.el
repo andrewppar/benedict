@@ -20,6 +20,7 @@
 (require 'bd-jira-board)
 (require 'bd-jira-user)
 (require 'bd-jira-config)
+(require 'bd-jira-request)
 (require 'subr-x)
 
 ;;;;;;;;;;;;;;;;
@@ -759,6 +760,18 @@ result."
     (pcase table-type
       (:issues (bd-jira-view/issue-detail-at-point line))
       (:boards (bd-jira-view/board-detail-at-point line)))))
+
+(defun bd-jira-view/save-image-at-point ()
+  (if-let ((link (org--link-at-point)))
+      (let ((image (string-join (cdr (string-split link ":")) ":")))
+	(if-let ((url (plist-get (plist-get bd-jira-view--input-data :attachments) image #'equal)))
+	    (bd-jira-content-request url)
+	  (progn
+	    (message "Could not find URL associated with %s" image)
+	    nil)))
+    (progn
+      (message "No image at point")
+      nil)))
 
 (provide 'bd-jira-view)
 ;;; bd-jira-view.el ends here
