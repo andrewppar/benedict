@@ -254,6 +254,15 @@ TO is the target format symbol."
   "Add ITEM to end of LISTA."
   (reverse (cons item (reverse lista))))
 
+(defun bd-jira-view--format-comment (comment-string)
+  "Given COMMENT-STRING format it so that it can be displayed in a comments section."
+  (string-join
+   (mapcar
+    (lambda (line)
+      (if (string-prefix-p "*" line) (format "*%s" line) line))
+    (string-split (bd-jira-view--jira-md->org comment-string) "\n"))
+   "\n"))
+
 (defun bd-jira-view/display-issue-detail (issue)
   "Draw a view of ISSUE in a new buffer."
   (cl-destructuring-bind (&key
@@ -287,11 +296,11 @@ TO is the target format symbol."
 	  (dolist (comment-spec comments)
 	    (cl-destructuring-bind (&key comment author created &allow-other-keys)
 		comment-spec
-	      (setq result
-		    (thread-last result
-				 (bd-jira-view--snoc (format "** %s: %s" created author))
-				 (bd-jira-view--snoc
-				  (bd-jira-view--jira-md->org comment)))))))
+	      (setq result (thread-last result
+					reverse
+					(cons (format "** %s: %s" created author))
+					(cons (bd-jira-view--format-comment comment))
+					reverse)))))
 	(insert (string-join result "\n"))
 	(org-mode)))))
 
