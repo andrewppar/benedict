@@ -93,14 +93,6 @@
 		 ("{code}"))
 	   "\n")))
 
-(defun bd-jira-view--resolve-user (user-block)
-  "Resolve a user name from USER-BLOCK - unfinished."
-  (let (id)
-    (save-match-data
-      (and (string-match "\\[~accountid:\\([0-9a-z:-]*\\)\\]" user-block)
-	   (setq id (match-string 1 user-block))))
-    (alist-get 'emailAddress (bd-jira-user/from-id id))))
-
 (defun bd-jira-view/insert-code (code)
   "Format CODE as code."
   (interactive "svalue: ")
@@ -254,14 +246,71 @@ TO is the target format symbol."
   "Add ITEM to end of LISTA."
   (reverse (cons item (reverse lista))))
 
+(defun bd-jira-view--next-idx-of (match string)
+  (let ((idx 0)
+	(max-idx (length string))
+	(result nil))
+    (while (and (not result) (< idx max-idx))
+      (if (string-prefix-p match (substring string idx))
+	  (setq result idx)
+	(setq idx (+ idx 1))))
+    result))
+
+(defun bd-jira-view--user-references (string)
+  (let ((reference-start "[[file:~accountid:")
+	(reference-end "]]")
+	(current-idx 0)
+	(max-idx (length string))
+	(idxs '()))
+    (while (< current-idx max-idx)
+      (let ((current (substring string current-idx)))
+	(if (string-prefix-p reference-start current)
+	    (if-let ((current-match-end (bd-jira-view--next-idx-of reference-end current)))
+		(let* ((match-end (+ current-idx current-match-end))
+		       (id-start (+ current-idx 18))
+		       (current-result (list :reference-start current-idx
+					     ;; 18 is lenght reference start
+					     :identifier-start id-start
+					     :identifier (substring-no-properties
+							  string id-start match-end)
+					     :identifier-end match-end
+					     :reference-end (+ match-end 2))))
+		  (push current-result idxs)
+		  (setq current-idx (or (plist-get current-result :reference-end) max-idx)))
+	      (setq current-idx (+ current-idx 1)))
+	  (setq current-idx (+ current-idx 1)))))
+    idxs))
+
+(defun bd-jira-view--resolve-references (user-references)
+  (let* ((ids (mapcar (lambda (ref) (plist-get ref :identifier)) user-references)))
+    (seq-reduce
+     (lambda (result user)
+       (let ((id (alist-get 'accountId user))
+	     (name (alist-get 'displayName user)))
+	 (plist-put result id name #'equal)))
+     (bd-jira-user/from-id ids)
+     '())))
+
+(defun bd-jira-view--resolve-users (user-references comment-string)
+  (let ((reference-map (bd-jira-view--resolve-references user-references)))
+    (seq-reduce
+     (lambda (result user-reference)
+       (let* ((id (plist-get user-reference :identifier))
+	      (link (format "[[file:~accountid:%s]]" id))
+	      (name (format "[[~accountid:%s][@%s]]" id (plist-get reference-map id #'equal))))
+	 (string-replace link name result)))
+     user-references
+     comment-string)))
+
 (defun bd-jira-view--format-comment (comment-string)
-  "Given COMMENT-STRING format it so that it can be displayed in a comments section."
-  (string-join
-   (mapcar
-    (lambda (line)
-      (if (string-prefix-p "*" line) (format "*%s" line) line))
-    (string-split (bd-jira-view--jira-md->org comment-string) "\n"))
-   "\n"))
+  "Given COMMENT-STRING format it for display in a comments section."
+  (let ((comment (string-join
+		  (mapcar
+		   (lambda (line)
+		     (if (string-prefix-p "*" line) (format "*%s" line) line))
+		   (string-split (bd-jira-view--jira-md->org comment-string) "\n"))
+		  "\n")))
+  (bd-jira-view--resolve-users (bd-jira-view--user-references comment) comment)))
 
 (defun bd-jira-view/display-issue-detail (issue)
   "Draw a view of ISSUE in a new buffer."

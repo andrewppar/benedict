@@ -31,12 +31,16 @@
 	(aref response 0)
       (message (format "Search term \"%s\" found no JIRA users." search-term)))))
 
-(defun bd-jira-user/from-id (id)
-  (bd-jira-request "user"
-		   :headers '(("Content-Type" . "application/json")
-			      ("Accept" . "application/json"))
-		   :parameters (list (cons 'accountId id))))
-
+(defun bd-jira-user/from-id (ids)
+  (let* ((max-idx (length ids))
+	 (params (cons
+		  (cons 'maxResults (+ max-idx 10))
+		  (mapcar (lambda (id) (cons 'accountId id)) ids)))
+	(response (bd-jira-v3-request "user/bulk"
+				 :headers '(("Content-Type" . "application/json")
+					    ("Accept" . "application/json"))
+				 :parameters params)))
+  (seq-concatenate 'list '() (alist-get 'values response))))
 
 (defun bd-jira-user/insert-ref (search-term)
   "Insert account associated with SEARCH-TERM in jira markdown."
