@@ -547,6 +547,35 @@ Sets the default priority to A."
      (hl-line-mode)
      (goto-char (point-min))))
 
+(defun bd-jira-view--balance-column-maxes (columns column->maxes)
+  (let* ((column-count (length columns))
+	 (max-val (/ (frame-width) column-count))
+	 (column-lists (mapcar
+			(lambda (column) (list column (plist-get column->maxes column)))
+			columns))
+	 (extra-room (seq-reduce
+		      (lambda (acc column-list)
+			(cl-destructuring-bind (column column-max)
+			    column-list
+			  (if (< column-max max-val)
+			      (+ acc (- max-val column-max))
+			    acc)))
+		      column-lists
+		      0))
+	 (overflow-columns (seq-filter
+			    (lambda (column-list)
+			      (> (cadr column-list) max-val))
+			    column-lists))
+	 (overflow-padding (+ (/ extra-room (length overflow-columns)) max-val)))
+    (seq-reduce
+     (lambda (result column-list)
+       (cl-destructuring-bind (column-name column-size) column-list
+	 (if (< column-size overflow-padding)
+	     result
+	   (plist-put result column-name overflow-padding))))
+     overflow-columns
+     column->maxes)))
+
 (defun bd-jira-view--column->max (columns rows)
   "Get the max char length of COLUMNS for in ROWS."
   (let ((result '()))
@@ -561,13 +590,16 @@ Sets the default priority to A."
 	      (current-val (length (format "%s" (plist-get row column)))))
 	  (when (< old-val current-val)
 	    (setq result (plist-put result column current-val))))))
-    result))
+    (bd-jira-view--balance-column-maxes columns result)))
 
-(defun bd-jira-view--padding (column->max-size column value)
-  "Generate padding for COLUMN with VALUE based on COLUMN->MAX-SIZE."
-  (let ((current-size (length value))
-	(max-size (plist-get column->max-size column)))
-    (make-string (+ (- max-size current-size) 1) ? )))
+(defun bd-jira-view--cell (column->max-size column cell)
+  (let* ((original-size (length cell))
+	 (max-size (plist-get column->max-size column))
+	 (distance (+ (- max-size original-size) 1)))
+    (if (< distance 1)
+	(format "%s..." (substring cell 0 (- max-size 3)))
+      (let ((padding (string-join (make-list distance " "))))
+	(format "%s%s" cell padding)))))
 
 ;;; boards
 
@@ -579,22 +611,17 @@ Sets the default priority to A."
 	(body  '()))
     ;; headers
     (dolist (column columns)
-      (let* ((cell (substring (format "%s" column) 1))
-	     (padding (bd-jira-view--padding column->size column cell)))
-	(setq header (concat header cell padding))))
+      (let ((cell (substring (format "%s" column) 1)))
+	(setq header (concat header (bd-jira-view--cell column->size column cell)))))
     ;; rows
     (dolist (row rows)
       (let ((row-string ""))
 	(dolist (column columns)
 	  (let* ((cell-content (or (plist-get row column) ""))
-		 (padding (bd-jira-view--padding
-			   column->size column cell-content))
+		 (cell-string (bd-jira-view--cell column->size column cell-content))
 		 (color-fn (plist-get column->color-fn column))
 		 (color (when color-fn (funcall color-fn cell-content)))
-		 (cell-string (concat cell-content padding))
-		 (cell (if color
-			   (bd-jira-view--colorize cell-string color)
-			 cell-string)))
+		 (cell (if color (bd-jira-view--colorize cell-string color) cell-string)))
 	    (setq row-string (concat row-string cell))))
 	(push row-string body)))
     (let ((divider (make-string (length header) ?=)))
