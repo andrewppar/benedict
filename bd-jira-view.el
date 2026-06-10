@@ -566,7 +566,10 @@ Sets the default priority to A."
 			    (lambda (column-list)
 			      (> (cadr column-list) max-val))
 			    column-lists))
-	 (overflow-padding (+ (/ extra-room (length overflow-columns)) max-val)))
+	 (overflow-padding (+ (if (> (length overflow-columns) 0)
+				  (/ extra-room (length overflow-columns))
+				0)
+			      max-val)))
     (seq-reduce
      (lambda (result column-list)
        (cl-destructuring-bind (column-name column-size) column-list

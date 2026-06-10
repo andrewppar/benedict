@@ -63,8 +63,7 @@
   			 :headers '(("Content-Type" . "application/json")
   				    ("Accept" . "application/json")))
 	(alist-get 'issueLinkTypes)
-	(mapcar
-	 (lambda (link-type) (alist-get 'name link-type))))))
+	(mapcar (lambda (link-type) (alist-get 'name link-type))))))
 
 ;;; Custom Deserialization
 ;; Example set this const whereever with whatever values
@@ -451,6 +450,8 @@ Assumes TRANSITION-NAME is valid for the issue."
   (bd-jira-issue/add-parent issue-key nil))
 
 (defun bd-jira-issue/add-sprint (issue-key sprint-name))
+
+(defun bd-jira-issue/add-subtask (issue sub-task))
 
 (provide 'bd-jira-issue)
 ;;; bd-jira-issue.el ends here
