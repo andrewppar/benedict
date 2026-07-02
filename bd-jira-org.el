@@ -217,11 +217,11 @@ in TODO or PROG states."
   "Add issue with ISSUE-KEY to org file.
 If it exists remove it so it can be refreshed."
   (save-excursion
-    (when-let ((pos (org-id-find-id-in-file issue-key bd-jira-org/jira-file 'marker)))
+    (when-let* ((pos (org-id-find-id-in-file issue-key bd-jira-org/jira-file 'marker)))
       (goto-char pos)
       (kill-region pos (org-end-of-subtree t)))
     (goto-char (point-max))
-    (when-let ((issue (bd-jira-org/->org (benedict-jira-issue/detail issue-key) nil 2 t)))
+    (when-let* ((issue (bd-jira-org/->org (benedict-jira-issue/detail issue-key) nil 2 t)))
       (insert issue))))
 
 (defun bd-jira-org--insert-subtasks (key->task)
@@ -273,7 +273,7 @@ Optionally also specify a JIRA COMPONENT."
 	(goto-char (point-max))
 	(insert "\n")
 	(dolist (issue issues)
-	  (when-let ((issue-text (bd-jira-org/->org issue key->task 2)))
+	  (when-let* ((issue-text (bd-jira-org/->org issue key->task 2)))
 	    (insert issue-text))))
       (bd-jira-org--insert-subtasks key->task))))
 

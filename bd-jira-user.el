@@ -63,7 +63,7 @@
 
 (defun bd-jira-user/set-user ()
   "Set the configuration account id."
-  (when-let ((email (bd-jira-config/get :user)))
+  (when-let* ((email (bd-jira-config/get :user)))
     (unless (bd-jira-config/get :account-id)
       (bd-jira-config/set :account-id (bd-jira-user/id email)))))
 

@@ -268,7 +268,7 @@
   "Create a jira issue from the current buffer."
   (interactive)
   (let ((result nil))
-    (when-let ((issue-spec (bd-jira-issue--parse-create-buffer)))
+    (when-let* ((issue-spec (bd-jira-issue--parse-create-buffer)))
       ;; Create the issue
       (cl-destructuring-bind (&key title issue-type label parent project component description &allow-other-keys)
 	  issue-spec
