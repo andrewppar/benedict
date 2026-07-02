@@ -161,7 +161,7 @@
 (defun bd-jira-view--format-issue-key (issue-key)
   "Format ISSUE-KEY.
 Make an org mode link if :domain is available in jira configuration."
-  (if-let ((domain (bd-jira-config/get :domain)))
+  (if-let* ((domain (bd-jira-config/get :domain)))
       (format "[[https://%s/browse/%s][%s]]" domain issue-key issue-key)
     issue-key))
 
@@ -201,7 +201,7 @@ STRING is the text to be converted.
 FROM is the source format symbol.
 TO is the target format symbol."
   (if string
-      (if-let ((executable (bd-jira-view--get-pandoc)))
+      (if-let* ((executable (bd-jira-view--get-pandoc)))
 	  (save-window-excursion
 	    (let* ((temp-file (make-temp-file "benedict"))
 		   (pandoc-from (substring (format "%s" from) 1))
@@ -265,7 +265,7 @@ TO is the target format symbol."
     (while (< current-idx max-idx)
       (let ((current (substring string current-idx)))
 	(if (string-prefix-p reference-start current)
-	    (if-let ((current-match-end (bd-jira-view--next-idx-of reference-end current)))
+	    (if-let* ((current-match-end (bd-jira-view--next-idx-of reference-end current)))
 		(let* ((match-end (+ current-idx current-match-end))
 		       (id-start (+ current-idx 18))
 		       (current-result (list :reference-start current-idx
@@ -847,9 +847,9 @@ result."
       (:boards (bd-jira-view/board-detail-at-point line)))))
 
 (defun bd-jira-view/save-image-at-point ()
-  (if-let ((link (org--link-at-point)))
+  (if-let* ((link (org--link-at-point)))
       (let ((image (string-join (cdr (string-split link ":")) ":")))
-	(if-let ((url (plist-get (plist-get bd-jira-view--input-data :attachments) image #'equal)))
+	(if-let* ((url (plist-get (plist-get bd-jira-view--input-data :attachments) image #'equal)))
 	    (bd-jira-content-request url)
 	  (progn
 	    (message "Could not find URL associated with %s" image)
